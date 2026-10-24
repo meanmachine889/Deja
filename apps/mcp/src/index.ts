@@ -281,23 +281,57 @@ server.registerTool(
 
 // ------------------------------------------------------------------ prompt
 
+// Broad sweeps for the bootstrap prompt: one vague query misses whole kinds of memory.
+const BOOTSTRAP_QUERIES = [
+  'tech stack, frameworks, hosting and infrastructure',
+  'database, migrations and data model',
+  'conventions, code style and how work gets done here',
+  'recent decisions and things that changed',
+  'people, owners and who to ask',
+  'the user’s preferences',
+];
+
 server.registerPrompt(
   'deja_bootstrap',
   {
     title: 'Load project memory',
-    description: 'Prime the conversation with what Déjà knows about this project.',
+    description: 'Prime the conversation with what Déjà knows about this project, grouped by kind.',
+    // Clients may pass only the first word typed after the command, so focus is an extra sweep, never the only one.
     argsSchema: { focus: z.string().optional() },
   },
   async ({ focus }) => {
-    const hits = await withCtx(undefined, (c) =>
-      deja.recall(c, { query: focus ?? `${c.project} stack, conventions, decisions and preferences`, k: 12 }),
-    );
-    const body = hits.length
-      ? hits.map(formatHit).join('\n')
-      : 'Déjà has no memories for this project yet. Remember durable facts as you learn them.';
-    return {
-      messages: [{ role: 'user', content: { type: 'text', text: `Here is what you remember about this project:\n${body}` } }],
-    };
+    const byId = new Map<string, RecallHit>();
+    await withCtx(undefined, async (c) => {
+      const queries = [...BOOTSTRAP_QUERIES, ...(focus && focus.trim().length > 2 ? [focus] : [])];
+      // Loading context isn't the agent using a memory, so it doesn't strengthen anything.
+      const results = await Promise.all(queries.map((query) => deja.recall(c, { query, k: 6, reinforce: false })));
+      for (const h of results.flat()) {
+        const prev = byId.get(h.memory.id);
+        if (!prev || h.score > prev.score) byId.set(h.memory.id, h);
+      }
+    });
+    const hits = [...byId.values()].sort((a, b) => b.score - a.score).slice(0, 18);
+    if (hits.length === 0) {
+      return {
+        messages: [
+          { role: 'user', content: { type: 'text', text: 'Déjà has no memories for this project yet. Remember durable facts as you learn them.' } },
+        ],
+      };
+    }
+    const sections = KINDS.map((kind) => {
+      const ofKind = hits.filter((h) => h.memory.kind === kind);
+      const heading = kind === 'person' ? 'people' : `${kind}s`;
+      return ofKind.length ? `## ${heading}\n${ofKind.map(formatHit).join('\n')}` : '';
+    }).filter(Boolean);
+    const conflicts = hits.filter((h) => h.conflictsWith.length).length;
+    const text = [
+      `Here is what you remember about ${config.project} (${hits.length} memories, strongest first within each kind).`,
+      conflicts ? `${conflicts} of them have open conflicts: ask the user before relying on those.` : '',
+      ...sections,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+    return { messages: [{ role: 'user', content: { type: 'text', text } }] };
   },
 );
 

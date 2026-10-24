@@ -1,6 +1,7 @@
 // Seeds the demo story (two months of agents working on "acme-shop") into DEJA_OWNER_ID's brain.
-// `pnpm seed:demo` · `pnpm seed:demo --reset` removes previously seeded demo data first.
-// Demo rows are recognisable by their `demo-` session ids, so real memories are never touched.
+// `pnpm seed:demo` · `pnpm seed:demo --reset` wipes the demo first: every row seeded with a `demo-`
+// session id, plus everything in the `acme-shop` project (it only exists for the demo, so recorded
+// runs start clean). Memories in other projects are never touched.
 import { Query, TablesDB } from 'node-appwrite';
 import {
   AppwriteEmbedder,
@@ -20,7 +21,10 @@ const ownerId = config.ownerId;
 const client = serverClient(config);
 const tables = new TablesDB(client);
 const vectors = createVectorIndex(config);
-const demoQuery = [Query.equal('ownerId', ownerId), Query.startsWith('sessionId', 'demo-')];
+const demoQuery = [
+  Query.equal('ownerId', ownerId),
+  Query.or([Query.startsWith('sessionId', 'demo-'), Query.equal('project', DEMO_PROJECT)]),
+];
 
 async function demoMemoryIds(): Promise<string[]> {
   const res = await tables.listRows({ databaseId: TABLES_DB_ID, tableId: T.memories, queries: [...demoQuery, Query.limit(500)] });
@@ -48,7 +52,7 @@ if (existing.length) {
   await tables.deleteRows({
     databaseId: TABLES_DB_ID,
     tableId: T.sessions,
-    queries: [Query.equal('ownerId', ownerId), Query.startsWith('$id', 'demo-')],
+    queries: [Query.equal('ownerId', ownerId), Query.or([Query.startsWith('$id', 'demo-'), Query.equal('project', DEMO_PROJECT)])],
   });
   await Promise.all(existing.map((id) => vectors.delete(id)));
 }

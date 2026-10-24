@@ -16,7 +16,8 @@ claude mcp add deja -s local -- pnpm -s --dir /Users/yashbharadwaj/deja mcp
 ## Before you record
 
 1. Qdrant is running: `docker compose up -d` (in `~/deja`).
-2. Fresh demo brain: `pnpm seed:demo --reset` (in `~/deja`, ~2 min). Removes only demo data.
+2. Fresh demo brain: `pnpm seed:demo --reset` (in `~/deja`, ~2 min). Wipes the `acme-shop` project and
+   anything seeded as demo data (including what earlier demo runs added), then reseeds. Other projects are untouched.
 3. Dashboard: `pnpm web`, open http://localhost:3100/brain, signed in. Window ≥ 1280px wide so the
    stats and live feed panels show.
 4. Claude Code is logged in: run `claude`, then `/login` if asked.
@@ -30,7 +31,8 @@ Lay out the screen: terminal on the left, dashboard on the right.
 
 `cd ~/acme-shop && claude`
 
-1. **Recall.** Prompt:
+1. **Recall.** Type `/mcp__deja__deja_bootstrap` (loads memory grouped by kind, without strengthening
+   anything), or just ask:
    > Before we start, check your memory: what do you know about this project?
 
    Watch: stars flare on the dashboard, feed shows `claude-code recalled 5 memories`.
