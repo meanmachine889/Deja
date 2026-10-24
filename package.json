@@ -1,0 +1,23 @@
+{
+  "name": "deja",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "setup:appwrite": "tsx --env-file=.env scripts/setup.ts",
+    "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
+    "smoke": "tsx --env-file=.env scripts/smoke.ts",
+    "mcp": "pnpm --filter @deja/mcp start",
+    "web": "pnpm --filter @deja/web dev",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0"
+  },
+  "dependencies": {
+    "@deja/core": "workspace:*"
+  }
+}
