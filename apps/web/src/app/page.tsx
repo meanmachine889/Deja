@@ -58,7 +58,7 @@ const SERVICES = [
 
 const STEPS = [
   { n: '01', title: 'Provision', body: 'Starts Qdrant, then creates the TablesDB database, tables, indexes and the vector collection.', cmd: 'docker compose up -d && pnpm setup:appwrite' },
-  { n: '02', title: 'Connect your agent', body: 'Any MCP client works. This adds Déjà to Claude Code.', cmd: 'claude mcp add deja -- pnpm --dir ~/deja mcp' },
+  { n: '02', title: 'Connect your agent', body: 'Any MCP client works. This adds Déjà to Claude Code.', cmd: 'claude mcp add deja -- pnpm -s --dir ~/deja mcp' },
   { n: '03', title: 'Open the brain', body: 'Sign in and watch memories form while your agent works.', cmd: 'pnpm web' },
 ];
 

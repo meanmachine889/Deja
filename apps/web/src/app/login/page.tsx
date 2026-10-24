@@ -35,7 +35,7 @@ export default function LoginPage() {
     }
   };
 
-  const install = `DEJA_OWNER_ID=${userId}\nclaude mcp add deja -- pnpm --dir ~/deja mcp`;
+  const install = `DEJA_OWNER_ID=${userId}\nclaude mcp add deja -- pnpm -s --dir ~/deja mcp`;
 
   return (
     <main className="dot-grid flex min-h-dvh items-center justify-center bg-void px-4">
