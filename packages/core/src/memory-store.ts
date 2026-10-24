@@ -33,7 +33,7 @@ export class MemoryStore implements Store {
       .sort((a, b) => a.distance - b.distance)
       .slice(0, limit);
   }
-  async putVector(id: string, vector: number[], metadata: Record<string, unknown>) {
+  async putVector(id: string, vector: number[], metadata: { ownerId: string }) {
     this.vectors.set(id, { vector, ownerId: String(metadata.ownerId) });
   }
   async deleteVector(id: string) {

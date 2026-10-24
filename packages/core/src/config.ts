@@ -10,6 +10,9 @@ const Env = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   DEJA_MODEL: z.string().default('claude-opus-5-5'),
   DEJA_TIME_WARP: z.coerce.number().positive().default(1),
+  DEJA_VECTOR_BACKEND: z.enum(['qdrant', 'appwrite']).default('qdrant'),
+  QDRANT_URL: z.string().url().default('http://localhost:6333'),
+  QDRANT_API_KEY: z.string().optional(),
 });
 
 export interface DejaConfig {
@@ -21,6 +24,10 @@ export interface DejaConfig {
   anthropicKey: string | undefined;
   model: string;
   timeWarp: number;
+  /** `qdrant` (local Docker, works on Appwrite Free) or `appwrite` (VectorsDB, needs a paid plan). */
+  vectorBackend: 'qdrant' | 'appwrite';
+  qdrantUrl: string;
+  qdrantApiKey: string | undefined;
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): DejaConfig {
@@ -39,6 +46,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): DejaConfig {
     anthropicKey: e.ANTHROPIC_API_KEY || undefined,
     model: e.DEJA_MODEL,
     timeWarp: e.DEJA_TIME_WARP,
+    vectorBackend: e.DEJA_VECTOR_BACKEND,
+    qdrantUrl: e.QDRANT_URL,
+    qdrantApiKey: e.QDRANT_API_KEY || undefined,
   };
 }
 

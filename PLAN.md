@@ -14,7 +14,7 @@
 | Event | Appwrite Databases Hackathon — https://hackathon.appwrite.io |
 | Window | Oct 19 – **Oct 31, 2026, 11:59 PM PT** (hard deadline, late = rejected) |
 | Rules | Solo. Built from scratch in the window (no code written before Oct 19 — do **not** copy from `meanmachine889/AI-Brain` or Appwrite's `memory-mcp` repo). OSS libraries/frameworks OK — **list them in the README tech stack**. |
-| Must use | ≥1 Appwrite DB: TablesDB, DocumentsDB, VectorsDB, Managed PostgreSQL, Managed MySQL. We use **VectorsDB + TablesDB** (+ Realtime, Auth, Embeddings, Sites). |
+| Must use | ≥1 Appwrite DB: TablesDB, DocumentsDB, VectorsDB, Managed PostgreSQL, Managed MySQL. We use **Appwrite TablesDB** as the primary database (+ Realtime, Auth, Embeddings, Sites) and **Qdrant in local Docker** as the vector index. Why: Appwrite Free allows 1 database/project and has no VectorsDB pool (verified in fra + nyc, Oct 24). `DEJA_VECTOR_BACKEND=appwrite` switches to VectorsDB if Yash upgrades. |
 | Submit | Public GitHub repo, **2–3 min demo video (demo only)**, form with DBs used. Live link optional (we'll ship one). |
 | Judged on | ① Idea & innovation ② Technical execution ③ Design & experience ④ **Usage of Appwrite Databases** |
 | Repo | `~/deja` → GitHub `meanmachine889/deja` (make public before submitting; ask Yash before pushing) |
@@ -52,7 +52,7 @@ a basic remember/recall/list/forget MCP on VectorsDB. **Judges will know it.** A
 |---|---|
 | append-only | contradiction detection + supersede chains |
 | all memories equal forever | forgetting curve + reinforcement on recall |
-| VectorsDB only | VectorsDB (semantic) **+** TablesDB (state, graph, provenance, events) **+** Realtime |
+| vectors only | vector index for meaning **+** Appwrite TablesDB for truth: state, graph, provenance, events **+** Realtime |
 | list view | live constellation, conflict inbox, time-warp, "why?" drawer |
 | no provenance | every memory → agent, session, excerpt |
 
@@ -70,9 +70,9 @@ supersedes the old star in realtime, and the second agent answers correctly *and
 
 ```
  Claude Code / Cursor ──stdio MCP──▶ apps/mcp ──▶ packages/core ──▶ Appwrite Cloud
-                                                       │              ├─ VectorsDB  deja_vectors.memories   (embeddings + light metadata)
                                                        │              ├─ TablesDB   deja.{memories,links,events,sessions}
                                                        │              ├─ Embeddings API (nomic-embed-text, 768d)
+                                                       ├─▶ Qdrant (docker compose, :6333) deja_memories   [or VectorsDB via DEJA_VECTOR_BACKEND=appwrite]
                                                        └─▶ Claude API (judge + extractor; heuristic fallback if no key)
 
  Browser ──▶ apps/web (Next.js on Appwrite Sites)
@@ -81,12 +81,13 @@ supersedes the old star in realtime, and the second agent answers correctly *and
               └─ /api/* route handlers → packages/core (API key, owner = verified JWT user)
 ```
 
-**Why two databases (say this in README + video — it's judging criterion ④):**
-- **VectorsDB** answers *"what is this about?"* — HNSW cosine search over embeddings.
+**Why TablesDB + a vector index (say this in README + video — it's judging criterion ④):**
+- **The vector index** (Qdrant locally; VectorsDB on paid plans) answers *"what is this about?"* — HNSW cosine search over Appwrite-generated embeddings.
 - **TablesDB** answers *"is it still true, how strong is it, where did it come from?"* — mutable
   state (status, stability, recall counts), the knowledge graph (`links`), the append-only event log
   that drives Realtime, sessions. Relational, indexed, row-level permissions.
-- Same ID in both: `memories.$id == vector document $id`.
+- Same ID in both: `memories.$id == vector point id` (UUID).
+- Code: `VectorIndex` interface in `store.ts`; `QdrantVectorIndex` (`qdrant.ts`) and `AppwriteVectorIndex` (`appwrite-store.ts`).
 
 ### Repo layout
 ```
@@ -117,7 +118,11 @@ Pinned SDKs: `node-appwrite@31.0.0`, `appwrite` (web) `@29.x`, `@modelcontextpro
 
 ## 3. Data model
 
-### VectorsDB — database `deja_vectors`, collection `memories`
+### Vector index — Qdrant collection `deja_memories` (default)
+- 768-d, Cosine, HNSW m=16 ef_construct=128, keyword payload index on `ownerId`. Payload `{ ownerId, project, kind }`.
+- Search: `POST /points/query` with an `ownerId` filter; score is similarity, engine uses `distance = 1 - score`.
+
+### Alternative: VectorsDB — database `deja_vectors`, collection `memories` (paid plan only)
 - `dimension: 768` (Appwrite Embeddings default model `nomic-embed-text`). Fields are fixed by
   Appwrite: `embeddings: number[]`, `metadata: object`.
 - `metadata = { ownerId, project, kind }` (lightweight; truth lives in TablesDB).
@@ -296,7 +301,8 @@ No Appwrite credentials? Everything still runs:
    (TablesDB + VectorsDB), `embeddings` (or whatever the Embeddings scope is named), `users.read`.
 3. Auth: enable Email/Password. Add web platform `localhost` (+ Sites domain later).
 4. `ANTHROPIC_API_KEY` (optional but needed for the contradiction judge to shine).
-5. Fill `~/deja/.env` from `.env.example`, then run `pnpm setup:appwrite`.
+5. Fill `~/deja/.env` from `.env.example`, then `docker compose up -d && pnpm setup:appwrite`.
+6. Active project: **nyc `6adcb14e002dba4719c7`** (fra `6adcae9500156b3c4931` is abandoned; delete it to free the 2-project Free limit).
 
 ---
 
@@ -307,14 +313,14 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done. Keep IDs stable.
 ### A. Foundation — Oct 24
 - [x] A1 Monorepo scaffold (pnpm workspace, tsconfig, .env.example, .gitignore, CLAUDE.md)
 - [x] A2 `packages/core` config + Appwrite clients + schema definitions
-- [~] A3 `scripts/setup.ts` (written, not yet run — run in C3) idempotent provisioning (both DBs, tables, columns, indexes, collection, HNSW index)
+- [x] A3 `scripts/setup.ts` (ran on nyc) idempotent provisioning (both DBs, tables, columns, indexes, collection, HNSW index)
 - [x] A4 `decay.ts` + unit tests
 
 ### B. Engine — Oct 24–25
 - [x] B1 `judge.ts`: extract + relation judge (Claude structured output) + heuristic fallback
 - [x] B2 `engine.ts`: remember (dedupe/supersede/conflict), recall (scoring+reinforce), forget, why, conflicts, resolve, timeline, stats
 - [x] B3 Engine tests with in-memory fake store (judge logic + scoring), no network
-- [ ] C3 Live smoke test against Appwrite (verify metadata filter syntax, `$distance`, realtime channels) — **needs §8**
+- [x] C3 Live smoke test (`pnpm smoke`, Appwrite nyc + Qdrant): all 8 checks pass. Realtime channel still unverified (needs a signed-in browser → D4).
 
 ### C. MCP — Oct 25
 - [x] C1 MCP stdio server with all §5 tools + `deja_bootstrap` prompt, session tracking
@@ -353,4 +359,5 @@ Append one line per session: date · what got done · what's next / blockers.
 - 2026-10-24 · D8 landing done (`apps/web/src/app/page.tsx` + `components/landing/*`): centred hero, hero sky canvas with supersede loop + Claude Code terminal vignette, 4 square stat cells, 2×2 square feature grid (1.0–1.3), why-two-databases squares + 4 Appwrite service squares, 3 install squares, wordmark footer. Verified desktop + mobile (no horizontal scroll). Copy says the dashboard "ships as a Next.js app on Appwrite Sites" — true only after E2. GitHub links point at `meanmachine889/deja` (not created yet).
 - 2026-10-24 · Live Appwrite project `6adcae9500156b3c4931` (fra). `pnpm setup:appwrite` created TablesDB `deja` + all 4 tables. **BLOCKER: VectorsDB create fails — "No shared vectorsdb pool is configured on this deployment"; every dedicated specification is `enabled: false` on the Free plan.** Embeddings API (768-d nomic) and TablesDB read/write verified working. Calibrated thresholds on real embeddings → `DEFAULT_THRESHOLDS` = duplicate 0.015 / candidate 0.4 / update 0.32 / related 0.3 (see comment in judge.ts). Found + fixed: reversed preference ("tabs over spaces" vs "now spaces instead of tabs") is only 0.043 apart, so the old 0.06 duplicate shortcut would have reinforced the wrong memory. Added `test/judge.test.ts` (20 tests total). `DEJA_OWNER_ID` must be a user *inside* the Deja project (sign up on /login), not the console account id. Web platform lives under Console → Connect → Apps.
 - 2026-10-24 · New project `6adcb14e002dba4719c7` (nyc) — same VectorsDB error (`pnpm check:vectorsdb`), so it's the plan, not the region. Appwrite docs: dedicated databases need a paid plan (Pro gets the 4 smallest specs + $10/mo DB credits); **Free allows only 1 database per project** (extras get disabled), so our TablesDB + VectorsDB design can't run on Free at all. `.env` now points at NYC (nothing provisioned there yet); the Frankfurt project still has the TablesDB tables. Decision pending from Yash: upgrade to Pro, ask Discord for hackathon credits, and/or a TablesDB-only fallback vector index (embeddings stored in a `vectors` table inside the single `deja` DB, cosine computed in-process).
+- 2026-10-24 · Yash's call: one Appwrite DB + local Docker for vectors. Built `VectorIndex` abstraction, `QdrantVectorIndex` (default), kept VectorsDB behind `DEJA_VECTOR_BACKEND=appwrite`. `docker-compose.yml` runs qdrant v1.15.4. Provisioned nyc project (TablesDB `deja` + 4 tables) + Qdrant collection. `scripts/smoke.ts` live: 8/8 checks (store, dedupe, supersede, recall ranks MySQL first at d=0.431, hides superseded, why, stats, events) in ~23s — latency from many sequential Appwrite calls; parallelize writes in engine later if the demo feels slow. Landing copy now says TablesDB + Qdrant. **Next:** Yash adds Web app `localhost` in nyc project → restart `pnpm web` (now live mode, needs login) → sign up → `DEJA_OWNER_ID` → verify Realtime (D4) → C2 (Claude Code) → E1 seed.
 

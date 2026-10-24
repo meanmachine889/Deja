@@ -9,7 +9,7 @@ const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' }
 export const metadata: Metadata = {
   title: 'Déjà — memory for AI agents that knows when it’s wrong',
   description:
-    'An MCP memory layer that supersedes stale facts, forgets noise on a human forgetting curve, and shows you your agent’s mind in realtime. Built on Appwrite VectorsDB + TablesDB.',
+    'An MCP memory layer that supersedes stale facts, forgets noise on a human forgetting curve, and shows you your agent’s mind in realtime. Built on Appwrite TablesDB.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -3,7 +3,7 @@ import { Client, EmbeddingModel, Embeddings, ID, Permission, Query, Role, Tables
 import type { Models } from 'node-appwrite';
 import type { DejaConfig } from './config.ts';
 import { T, TABLES_DB_ID, VECTOR_COLLECTION_ID, VECTORS_DB_ID } from './schema.ts';
-import type { Embedder, NewEvent, NewLink, NewMemory, Store, VectorHit } from './store.ts';
+import type { Embedder, NewEvent, NewLink, NewMemory, Store, VectorHit, VectorIndex } from './store.ts';
 import type { EventType, Link, LinkType, Memory, MemoryEvent, Session, Status } from './types.ts';
 
 export function serverClient(config: Pick<DejaConfig, 'endpoint' | 'projectId' | 'apiKey'>): Client {
@@ -80,54 +80,27 @@ function isNotFound(err: unknown): boolean {
   return typeof err === 'object' && err !== null && 'code' in err && (err as { code: number }).code === 404;
 }
 
+/** State, graph, events and sessions in Appwrite TablesDB; embeddings in a pluggable VectorIndex. */
 export class AppwriteStore implements Store {
   private tables: TablesDB;
-  private vectors: VectorsDB;
-  /** Set to false the first time a metadata filter is rejected; we then post-filter by ownerId. */
-  private metadataFilter = true;
 
-  constructor(client: Client) {
+  constructor(
+    client: Client,
+    private vectors: VectorIndex,
+  ) {
     this.tables = new TablesDB(client);
-    this.vectors = new VectorsDB(client);
   }
 
-  async vectorSearch(ownerId: string, vector: number[], limit: number): Promise<VectorHit[]> {
-    const base = [Query.vectorCosine('embeddings', vector), Query.limit(limit)];
-    const run = (queries: string[]) =>
-      // POST variant: a 768-d vector is ~9 KB, too big to trust to a URL.
-      this.vectors.createQuery({ databaseId: VECTORS_DB_ID, collectionId: VECTOR_COLLECTION_ID, queries });
-    let res: Models.DocumentList<Models.DefaultDocument>;
-    if (this.metadataFilter) {
-      try {
-        res = await run([...base, Query.equal('metadata.ownerId', ownerId)]);
-      } catch {
-        this.metadataFilter = false;
-        res = await run(base);
-      }
-    } else {
-      res = await run(base);
-    }
-    return res.documents
-      .filter((d) => (d.metadata as { ownerId?: string } | undefined)?.ownerId === ownerId)
-      .map((d) => ({ id: d.$id, distance: Number(d.$distance ?? 1) }));
+  vectorSearch(ownerId: string, vector: number[], limit: number): Promise<VectorHit[]> {
+    return this.vectors.search(ownerId, vector, limit);
   }
 
-  async putVector(id: string, vector: number[], metadata: Record<string, unknown>) {
-    await this.vectors.createDocument({
-      databaseId: VECTORS_DB_ID,
-      collectionId: VECTOR_COLLECTION_ID,
-      documentId: id,
-      data: { embeddings: vector, metadata },
-      permissions: ownerPerms(String(metadata.ownerId)),
-    });
+  putVector(id: string, vector: number[], metadata: { ownerId: string; project: string; kind: string }) {
+    return this.vectors.put(id, vector, metadata);
   }
 
-  async deleteVector(id: string) {
-    try {
-      await this.vectors.deleteDocument({ databaseId: VECTORS_DB_ID, collectionId: VECTOR_COLLECTION_ID, documentId: id });
-    } catch (err) {
-      if (!isNotFound(err)) throw err;
-    }
+  deleteVector(id: string) {
+    return this.vectors.delete(id);
   }
 
   async getMemory(id: string) {
@@ -260,6 +233,57 @@ export class AppwriteStore implements Store {
       queries: [Query.equal('ownerId', ownerId), Query.orderDesc('lastSeenAt'), Query.limit(limit)],
     });
     return res.rows.map(toSession);
+  }
+}
+
+/** Embeddings in Appwrite VectorsDB. Needs a paid plan (no shared pool on Free). */
+export class AppwriteVectorIndex implements VectorIndex {
+  readonly name = 'appwrite-vectorsdb';
+  private vectors: VectorsDB;
+  /** Set to false the first time a metadata filter is rejected; we then post-filter by ownerId. */
+  private metadataFilter = true;
+
+  constructor(client: Client) {
+    this.vectors = new VectorsDB(client);
+  }
+
+  async search(ownerId: string, vector: number[], limit: number): Promise<VectorHit[]> {
+    const base = [Query.vectorCosine('embeddings', vector), Query.limit(limit)];
+    const run = (queries: string[]) =>
+      // POST variant: a 768-d vector is ~9 KB, too big to trust to a URL.
+      this.vectors.createQuery({ databaseId: VECTORS_DB_ID, collectionId: VECTOR_COLLECTION_ID, queries });
+    let res: Models.DocumentList<Models.DefaultDocument>;
+    if (this.metadataFilter) {
+      try {
+        res = await run([...base, Query.equal('metadata.ownerId', ownerId)]);
+      } catch {
+        this.metadataFilter = false;
+        res = await run(base);
+      }
+    } else {
+      res = await run(base);
+    }
+    return res.documents
+      .filter((d) => (d.metadata as { ownerId?: string } | undefined)?.ownerId === ownerId)
+      .map((d) => ({ id: d.$id, distance: Number(d.$distance ?? 1) }));
+  }
+
+  async put(id: string, vector: number[], metadata: { ownerId: string; project: string; kind: string }) {
+    await this.vectors.createDocument({
+      databaseId: VECTORS_DB_ID,
+      collectionId: VECTOR_COLLECTION_ID,
+      documentId: id,
+      data: { embeddings: vector, metadata },
+      permissions: ownerPerms(metadata.ownerId),
+    });
+  }
+
+  async delete(id: string) {
+    try {
+      await this.vectors.deleteDocument({ databaseId: VECTORS_DB_ID, collectionId: VECTOR_COLLECTION_ID, documentId: id });
+    } catch (err) {
+      if (!isNotFound(err)) throw err;
+    }
   }
 }
 

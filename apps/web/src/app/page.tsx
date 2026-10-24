@@ -43,7 +43,7 @@ function SectionHead({ label, title, sub }: { label: string; title: React.ReactN
 }
 
 const STATS: { value: React.ReactNode; label: string; note: string }[] = [
-  { value: '2', label: 'Appwrite databases', note: 'VectorsDB + TablesDB' },
+  { value: '4', label: 'TablesDB tables', note: 'memories · links · events · sessions' },
   { value: '7', label: 'MCP tools', note: 'remember · recall · why · …' },
   { value: <>e<sup className="ml-0.5 align-super text-[0.45em] italic">−t/S</sup></>, label: 'forgetting curve', note: 'spaced-repetition stability' },
   { value: '1', label: 'memory for every agent', note: 'Claude Code, Cursor, Codex' },
@@ -57,7 +57,7 @@ const SERVICES = [
 ];
 
 const STEPS = [
-  { n: '01', title: 'Provision', body: 'Creates both databases, tables, indexes and the HNSW vector index.', cmd: 'pnpm setup:appwrite' },
+  { n: '01', title: 'Provision', body: 'Starts Qdrant, then creates the TablesDB database, tables, indexes and the vector collection.', cmd: 'docker compose up -d && pnpm setup:appwrite' },
   { n: '02', title: 'Connect your agent', body: 'Any MCP client works. This adds Déjà to Claude Code.', cmd: 'claude mcp add deja -- pnpm --dir ~/deja mcp' },
   { n: '03', title: 'Open the brain', body: 'Sign in and watch memories form while your agent works.', cmd: 'pnpm web' },
 ];
@@ -74,7 +74,7 @@ export default function Landing() {
           </Link>
           <nav className="hidden h-14 items-center justify-center gap-8 border-x border-line text-[13px] text-mute md:flex">
             <a href="#how" className="hover:text-ink">How it works</a>
-            <a href="#databases" className="hover:text-ink">Databases</a>
+            <a href="#databases" className="hover:text-ink">Storage</a>
             <a href="#install" className="hover:text-ink">Install</a>
           </nav>
           <div className="flex h-14 items-center justify-end gap-4 px-5">
@@ -90,7 +90,7 @@ export default function Landing() {
         {/* Hero copy */}
         <section className="relative flex flex-col items-center px-6 pb-16 pt-20 text-center sm:pt-28">
           <span className="inline-flex items-center gap-2 border border-line px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.16em] text-ink-2">
-            <Database size={11} className="text-amber" /> Built on Appwrite VectorsDB + TablesDB
+            <Database size={11} className="text-amber" /> Built on Appwrite TablesDB
           </span>
           <h1 className="mt-8 font-serif text-[52px] leading-[0.98] tracking-[-0.02em] sm:text-[84px] lg:text-[104px]">
             Your agents remember.
@@ -163,32 +163,33 @@ export default function Landing() {
         {/* Databases */}
         <Row id="databases">
           <SectionHead
-            label="Why two databases"
+            label="Where memory lives"
             title={
               <>
-                One answers <span className="italic">what</span>.
+                Vectors answer <span className="italic">what</span>.
                 <br />
-                <span className="text-mute">The other answers whether it’s still true.</span>
+                <span className="text-mute">TablesDB answers whether it’s still true.</span>
               </>
             }
+            sub="Similarity alone can’t tell you a fact went stale. Everything that makes Déjà more than a vector dump lives in Appwrite TablesDB."
           />
         </Row>
         <Row>
           <div className="grid grid-cols-1 md:grid-cols-2">
             <DbCell
-              name="VectorsDB"
-              question="What is this about?"
-              body="Each memory’s embedding lives in a 768-d collection with an HNSW cosine index. Recall and contradiction checks start with one vector query."
+              label="Appwrite TablesDB"
+              question="Is it still true? Where did it come from?"
+              body="Status, stability and recall counts, the knowledge graph of supersedes and contradicts links, sessions, and the append-only event log that Realtime streams. Row-level permissions keep each brain private."
               className="border-b border-line md:border-b-0 md:border-r"
             >
-              <VectorViz />
+              <TableViz />
             </DbCell>
             <DbCell
-              name="TablesDB"
-              question="Is it still true? Where did it come from?"
-              body="Status, stability and recall counts, the knowledge graph of supersedes and contradicts links, sessions, and the append-only event log Realtime streams."
+              label="Vector index · Qdrant"
+              question="What is this about?"
+              body="Appwrite Embeddings turns each memory into a 768-d vector, indexed with HNSW cosine. One env var swaps the index to Appwrite VectorsDB."
             >
-              <TableViz />
+              <VectorViz />
             </DbCell>
           </div>
         </Row>
@@ -256,18 +257,19 @@ export default function Landing() {
   );
 }
 
-function DbCell(props: { name: string; question: string; body: string; className?: string; children: React.ReactNode }) {
+function DbCell(props: { label: string; question: string; body: string; className?: string; children: React.ReactNode }) {
   return (
     <div className={`flex flex-col md:aspect-square ${props.className ?? ''}`}>
       <div className="flex items-center justify-between px-6 pt-5">
-        <Label>Appwrite {props.name}</Label>
+        <Label>{props.label}</Label>
         <Database size={13} className="text-faint" />
       </div>
       <div className="relative flex min-h-[16rem] flex-1 items-center justify-center overflow-hidden px-6 py-8">
         <div className="dot-grid absolute inset-0 opacity-50" />
         <div className="relative w-full">{props.children}</div>
       </div>
-      <div className="border-t border-line px-6 py-5">
+      {/* Fixed height so neighbouring squares keep their rules aligned. */}
+      <div className="border-t border-line px-6 py-5 md:h-44">
         <p className="font-serif text-[28px] leading-tight">{props.question}</p>
         <p className="mt-2 text-sm leading-relaxed text-mute">{props.body}</p>
       </div>

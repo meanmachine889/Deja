@@ -1,0 +1,12 @@
+# Local vector index for Déjà. Appwrite TablesDB holds everything else.
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.15.4
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+    volumes:
+      - qdrant-data:/qdrant/storage
+
+volumes:
+  qdrant-data:

@@ -3,6 +3,8 @@ import { TablesDB, VectorsDB, VectorsDBIndexType } from 'node-appwrite';
 import {
   EMBEDDING_DIMENSION,
   loadConfig,
+  QDRANT_COLLECTION,
+  QdrantVectorIndex,
   serverClient,
   TABLE_DEFS,
   TABLES_DB_ID,
@@ -58,32 +60,38 @@ for (const def of TABLE_DEFS) {
   );
 }
 
-console.log('\nVectorsDB');
-await ensure(`database ${VECTORS_DB_ID}`, () => vectors.create({ databaseId: VECTORS_DB_ID, name: 'Déjà vectors' }));
-await ensure(`collection ${VECTOR_COLLECTION_ID} (${EMBEDDING_DIMENSION}d)`, () =>
-  vectors.createCollection({
-    databaseId: VECTORS_DB_ID,
-    collectionId: VECTOR_COLLECTION_ID,
-    name: 'Memory embeddings',
-    dimension: EMBEDDING_DIMENSION,
-    permissions: [],
-    documentSecurity: true,
-  }),
-);
-await ensure(`index ${VECTOR_INDEX_KEY} (hnsw cosine)`, () =>
-  vectors.createIndex({
-    databaseId: VECTORS_DB_ID,
-    collectionId: VECTOR_COLLECTION_ID,
-    key: VECTOR_INDEX_KEY,
-    type: VectorsDBIndexType.HnswCosine,
-    attributes: ['embeddings'],
-  }),
-);
-await waitFor('vector index', async () =>
-  String(
-    (await vectors.getIndex({ databaseId: VECTORS_DB_ID, collectionId: VECTOR_COLLECTION_ID, key: VECTOR_INDEX_KEY }))
-      .status,
-  ),
-);
+if (config.vectorBackend === 'qdrant') {
+  console.log(`\nQdrant (${config.qdrantUrl})`);
+  const created = await new QdrantVectorIndex(config.qdrantUrl, config.qdrantApiKey).ensure();
+  console.log(`  ${created ? '✓ created' : '· exists'} collection ${QDRANT_COLLECTION} (${EMBEDDING_DIMENSION}d cosine, ownerId index)`);
+} else {
+  console.log('\nVectorsDB');
+  await ensure(`database ${VECTORS_DB_ID}`, () => vectors.create({ databaseId: VECTORS_DB_ID, name: 'Déjà vectors' }));
+  await ensure(`collection ${VECTOR_COLLECTION_ID} (${EMBEDDING_DIMENSION}d)`, () =>
+    vectors.createCollection({
+      databaseId: VECTORS_DB_ID,
+      collectionId: VECTOR_COLLECTION_ID,
+      name: 'Memory embeddings',
+      dimension: EMBEDDING_DIMENSION,
+      permissions: [],
+      documentSecurity: true,
+    }),
+  );
+  await ensure(`index ${VECTOR_INDEX_KEY} (hnsw cosine)`, () =>
+    vectors.createIndex({
+      databaseId: VECTORS_DB_ID,
+      collectionId: VECTOR_COLLECTION_ID,
+      key: VECTOR_INDEX_KEY,
+      type: VectorsDBIndexType.HnswCosine,
+      attributes: ['embeddings'],
+    }),
+  );
+  await waitFor('vector index', async () =>
+    String(
+      (await vectors.getIndex({ databaseId: VECTORS_DB_ID, collectionId: VECTOR_COLLECTION_ID, key: VECTOR_INDEX_KEY }))
+        .status,
+    ),
+  );
+}
 
 console.log('\nDone. Next: sign up on the dashboard, put your user id in DEJA_OWNER_ID, then `pnpm smoke`.');

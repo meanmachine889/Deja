@@ -16,7 +16,7 @@ export type NewEvent = Omit<MemoryEvent, 'id'>;
  */
 export interface Store {
   vectorSearch(ownerId: string, vector: number[], limit: number): Promise<VectorHit[]>;
-  putVector(id: string, vector: number[], metadata: Record<string, unknown>): Promise<void>;
+  putVector(id: string, vector: number[], metadata: { ownerId: string; project: string; kind: string }): Promise<void>;
   deleteVector(id: string): Promise<void>;
 
   getMemory(id: string): Promise<Memory | null>;
@@ -39,6 +39,14 @@ export interface Store {
   upsertSession(session: Session): Promise<Session>;
   getSession(id: string): Promise<Session | null>;
   listSessions(ownerId: string, limit?: number): Promise<Session[]>;
+}
+
+/** Where embeddings live and get searched. Qdrant (local Docker) or Appwrite VectorsDB. */
+export interface VectorIndex {
+  readonly name: string;
+  search(ownerId: string, vector: number[], limit: number): Promise<VectorHit[]>;
+  put(id: string, vector: number[], metadata: { ownerId: string; project: string; kind: string }): Promise<void>;
+  delete(id: string): Promise<void>;
 }
 
 export interface Embedder {

@@ -1,4 +1,5 @@
-import { AppwriteEmbedder, AppwriteStore, serverClient } from './appwrite-store.ts';
+import { AppwriteEmbedder, AppwriteStore, AppwriteVectorIndex, serverClient } from './appwrite-store.ts';
+import { QdrantVectorIndex } from './qdrant.ts';
 import type { DejaConfig } from './config.ts';
 import { Deja } from './engine.ts';
 import { ClaudeJudge, HeuristicJudge } from './judge.ts';
@@ -9,14 +10,21 @@ export * from './config.ts';
 export * from './store.ts';
 export * from './engine.ts';
 export * from './judge.ts';
-export { AppwriteStore, AppwriteEmbedder, serverClient } from './appwrite-store.ts';
+export { AppwriteStore, AppwriteEmbedder, AppwriteVectorIndex, serverClient } from './appwrite-store.ts';
+export { QdrantVectorIndex, QDRANT_COLLECTION } from './qdrant.ts';
 export { MemoryStore, HashEmbedder, cosineDistance } from './memory-store.ts';
 
-/** Wire the engine to Appwrite + Claude from config. */
+export function createVectorIndex(config: DejaConfig) {
+  return config.vectorBackend === 'appwrite'
+    ? new AppwriteVectorIndex(serverClient(config))
+    : new QdrantVectorIndex(config.qdrantUrl, config.qdrantApiKey);
+}
+
+/** Wire the engine to Appwrite TablesDB + the configured vector index + Claude from config. */
 export function createDeja(config: DejaConfig): Deja {
   const client = serverClient(config);
   return new Deja({
-    store: new AppwriteStore(client),
+    store: new AppwriteStore(client, createVectorIndex(config)),
     embedder: new AppwriteEmbedder(client),
     judge: config.anthropicKey ? new ClaudeJudge(config.anthropicKey, config.model) : new HeuristicJudge(),
     timeWarp: config.timeWarp,

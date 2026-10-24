@@ -49,7 +49,8 @@ export function FeatureGrid() {
             <div className="dot-grid absolute inset-0 opacity-50" />
             <div className="relative w-full">{f.vignette}</div>
           </div>
-          <div className="border-t border-line px-6 py-5">
+          {/* Fixed height so neighbouring squares keep their rules aligned. */}
+          <div className="border-t border-line px-6 py-5 md:h-40">
             <h3 className="font-serif text-[28px] leading-tight text-ink">{f.title}</h3>
             <p className="mt-2 text-sm leading-relaxed text-mute">{f.body}</p>
           </div>
