@@ -11,6 +11,12 @@ importers:
       '@deja/core':
         specifier: workspace:*
         version: link:packages/core
+      '@modelcontextprotocol/sdk':
+        specifier: ^1.32.2
+        version: 1.32.2(zod@4.6.7)
+      node-appwrite:
+        specifier: 31.0.0
+        version: 31.0.0
     devDependencies:
       '@types/node':
         specifier: ^24.0.0

@@ -22,3 +22,4 @@ export function createDeja(config: DejaConfig): Deja {
     timeWarp: config.timeWarp,
   });
 }
+export * from './schema.ts';

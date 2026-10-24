@@ -9,8 +9,9 @@
     "smoke": "tsx --env-file=.env scripts/smoke.ts",
     "mcp": "pnpm --filter @deja/mcp start",
     "web": "pnpm --filter @deja/web dev",
-    "typecheck": "pnpm -r typecheck",
-    "test": "pnpm -r test"
+    "typecheck": "tsc -p . && pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "mcp:e2e": "tsx scripts/mcp-e2e.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -18,6 +19,8 @@
     "typescript": "^5.9.0"
   },
   "dependencies": {
-    "@deja/core": "workspace:*"
+    "@deja/core": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.32.2",
+    "node-appwrite": "31.0.0"
   }
 }
