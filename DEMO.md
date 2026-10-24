@@ -4,7 +4,9 @@ The story: a coding agent learns something in one session, the fact changes, and
 session** (no chat history) still gets it right and can explain why. The dashboard shows each step
 live. Matches PLAN.md §7 (the video script).
 
-Demo repo: `~/acme-shop` (folder name = Déjà project name, matching the seeded memories).
+Demo repo: `~/acme-shop` (folder name = Déjà project name, matching the seeded memories). It has a
+web app and an API but **no database code or hints** (files, README, scripts, git history), so the
+database answer in session 2 can only come from Déjà.
 Déjà is registered there for Claude Code only (local scope):
 
 ```
@@ -23,7 +25,10 @@ claude mcp add deja -s local -- pnpm -s --dir /Users/yashbharadwaj/deja mcp
 4. Claude Code is logged in: run `claude`, then `/login` if asked.
 5. No Anthropic key needed: the agent reports changes itself via `replaces`, and keyword rules catch
    the rest. (`ANTHROPIC_API_KEY` is optional; `pnpm check:judge` verifies it if you add one.)
-6. In Claude Code, `/mcp` should show `deja · connected`.
+6. In Claude Code, `/mcp` should show `deja · connected`. **Disable other database MCP servers**
+   (e.g. Neon) for the session: in an earlier run Claude saw a Postgres connection and hedged.
+7. Clean repo after a previous run: `git -C ~/acme-shop clean -fd && git -C ~/acme-shop checkout .`
+   (removes the `db/` folder session 2 creates).
 
 Lay out the screen: terminal on the left, dashboard on the right.
 
@@ -65,14 +70,16 @@ Quit with `/exit`.
 4. **Use the memory.** Prompt:
    > Add a migration for an orders table.
 
-   Expected: Claude recalls first, then writes a **MySQL** migration with **Drizzle** (in
-   `db/schema.ts` + `db/migrations/`), not Postgres, and mentions that migrations need two reviewers.
-   If it starts without recalling, nudge: *"check your memory first"*.
+   Expected: the repo has no database code, so Claude must recall. It creates `db/` from scratch with a
+   **Drizzle** schema using `mysql-core` and a **MySQL** migration, not Postgres, and mentions that
+   migrations need two reviewers. If it starts without recalling, nudge: *"check your memory first"*.
+   Narration line: *"Nothing in this repo says MySQL. It knows because it remembers."*
 
 5. **Explain itself.** Prompt:
    > Why do you think we use MySQL?
 
-   Claude calls `why`: who stored it, when, and that it replaced "Postgres hosted on Supabase".
+   Claude calls `why`: who stored it, when, and that it replaced "Postgres hosted on Supabase". Its
+   only evidence is the memory (an earlier run with `db/` in the repo leaned on the code instead).
    On the dashboard, click the MySQL star: the drawer shows the same provenance and history.
 
 ## Close on the dashboard
