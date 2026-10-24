@@ -42,7 +42,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): DejaConfig {
     projectId: e.APPWRITE_PROJECT_ID,
     apiKey: e.APPWRITE_API_KEY,
     ownerId: e.DEJA_OWNER_ID || undefined,
-    project: normalizeProject(e.DEJA_PROJECT || basename(process.cwd())),
+    // pnpm --dir/--filter change cwd; INIT_CWD is the folder the agent actually launched us from.
+    project: normalizeProject(e.DEJA_PROJECT || basename(env.INIT_CWD || process.cwd())),
     anthropicKey: e.ANTHROPIC_API_KEY || undefined,
     model: e.DEJA_MODEL,
     timeWarp: e.DEJA_TIME_WARP,

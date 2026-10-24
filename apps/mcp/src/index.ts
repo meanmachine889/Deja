@@ -23,7 +23,7 @@ import {
 // DEJA_OFFLINE=1 runs against an in-process store: no Appwrite, nothing persisted. For protocol tests.
 const offline = process.env.DEJA_OFFLINE === '1';
 const config = offline
-  ? { ownerId: 'offline', project: normalizeProject(process.env.DEJA_PROJECT || basename(process.cwd())) }
+  ? { ownerId: 'offline', project: normalizeProject(process.env.DEJA_PROJECT || basename(process.env.INIT_CWD || process.cwd())) }
   : loadConfig();
 const deja = offline
   ? new Deja({

@@ -7,7 +7,7 @@
     "setup:appwrite": "tsx --env-file=.env scripts/setup.ts",
     "seed:demo": "tsx --env-file=.env scripts/seed-demo.ts",
     "smoke": "tsx --env-file=.env scripts/smoke.ts",
-    "mcp": "pnpm --filter @deja/mcp start",
+    "mcp": "tsx --env-file-if-exists=.env apps/mcp/src/index.ts",
     "web": "pnpm --filter @deja/web dev",
     "typecheck": "tsc -p . && pnpm -r typecheck",
     "test": "pnpm -r test",
