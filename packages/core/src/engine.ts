@@ -361,38 +361,40 @@ export class Deja {
 
   async why(ctx: Ctx, id: string): Promise<WhyResult> {
     const memory = await this.owned(ctx, id);
-    const links = await this.store.listLinks(ctx.ownerId, { memoryIds: [id] });
+    // Independent reads in parallel; only the (rare) multi-step history chain is sequential.
+    const [links, session, events] = await Promise.all([
+      this.store.listLinks(ctx.ownerId, { memoryIds: [id] }),
+      this.store.getSession(memory.sessionId),
+      this.store.listEvents(ctx.ownerId, { memoryId: id, limit: 100 }),
+    ]);
     const others = new Map(
       (await this.store.getMemories([...new Set(links.map((l) => (l.fromId === id ? l.toId : l.fromId)))])).map((m) => [m.id, m]),
     );
 
     const replaced: Memory[] = [];
-    let cursor: string | undefined = id;
-    for (let depth = 0; cursor && depth < 10; depth++) {
-      const [prev] = await this.store.listLinks(ctx.ownerId, { memoryIds: [cursor], type: 'supersedes' }).then((ls) =>
-        ls.filter((l) => l.fromId === cursor),
-      );
-      if (!prev) break;
-      const older = await this.store.getMemory(prev.toId);
+    let olderLinks = links.filter((l) => l.type === 'supersedes' && l.fromId === id);
+    for (let depth = 0; olderLinks.length && depth < 10; depth++) {
+      const older = others.get(olderLinks[0]!.toId) ?? (await this.store.getMemory(olderLinks[0]!.toId));
       if (!older) break;
       replaced.push(older);
-      cursor = older.id;
+      olderLinks = (await this.store.listLinks(ctx.ownerId, { memoryIds: [older.id], type: 'supersedes' })).filter(
+        (l) => l.fromId === older.id,
+      );
     }
 
     const replacedBy: Memory[] = [];
     let next = memory.supersededBy;
     for (let depth = 0; next && depth < 10; depth++) {
-      const newer = await this.store.getMemory(next);
+      const newer = others.get(next) ?? (await this.store.getMemory(next));
       if (!newer) break;
       replacedBy.push(newer);
       next = newer.supersededBy;
     }
 
-    const events = (await this.store.listEvents(ctx.ownerId, { limit: 200 })).filter((e) => e.memoryId === id);
     return {
       memory,
       retention: this.retentionOf(memory),
-      session: await this.store.getSession(memory.sessionId),
+      session,
       replaced,
       replacedBy,
       links: links.flatMap((link) => {

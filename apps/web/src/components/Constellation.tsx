@@ -16,17 +16,18 @@ import {
 } from 'd3-force';
 import { useEffect, useRef } from 'react';
 
+// Muted, chart-like tints: kind is legible without anything glowing.
 export const KIND_RGB: Record<Kind, [number, number, number]> = {
-  fact: [242, 237, 230],
-  preference: [245, 181, 91],
-  decision: [159, 194, 255],
-  convention: [168, 226, 192],
-  person: [231, 179, 223],
-  event: [185, 179, 168],
+  fact: [232, 228, 220],
+  preference: [214, 182, 132],
+  decision: [150, 172, 208],
+  convention: [150, 194, 170],
+  person: [196, 166, 190],
+  event: [150, 145, 137],
 };
 const KIND_ORDER: Kind[] = ['convention', 'decision', 'fact', 'person', 'event', 'preference'];
 
-type Node = SimulationNodeDatum & { id: string; m: Memory; r: number; phase: number };
+type Node = SimulationNodeDatum & { id: string; m: Memory; r: number };
 type Edge = SimulationLinkDatum<Node> & { type: Link['type']; resolved: boolean };
 
 export interface ConstellationProps {
@@ -57,7 +58,7 @@ function anchor(kind: Kind) {
   return { x: Math.cos(a) * 140, y: Math.sin(a) * 95 };
 }
 
-const radiusFor = (m: Memory) => 2.4 + 1.6 * Math.log2(m.recallCount + 2);
+const radiusFor = (m: Memory) => 2.2 + 1.3 * Math.log2(m.recallCount + 2);
 
 export function Constellation(props: ConstellationProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -87,7 +88,6 @@ export function Constellation(props: ConstellationProps) {
           id: m.id,
           m,
           r: radiusFor(m),
-          phase: Math.random() * Math.PI * 2,
           x: (base.x ?? 0) + (Math.random() - 0.5) * 40,
           y: (base.y ?? 0) + (Math.random() - 0.5) * 40,
         });
@@ -141,12 +141,12 @@ export function Constellation(props: ConstellationProps) {
       dust.width = canvas.width;
       dust.height = canvas.height;
       const d = dust.getContext('2d')!;
-      const count = Math.round((rect.width * rect.height) / 2600);
+      const count = Math.round((rect.width * rect.height) / 4200);
       for (let i = 0; i < count; i++) {
-        const a = Math.random() * 0.28 + 0.03;
-        d.fillStyle = `rgba(242,237,230,${a})`;
+        const a = Math.random() * 0.16 + 0.02;
+        d.fillStyle = `rgba(232,228,220,${a})`;
         d.beginPath();
-        d.arc(Math.random() * dust.width, Math.random() * dust.height, Math.random() * 0.9 * dpr + 0.2, 0, Math.PI * 2);
+        d.arc(Math.random() * dust.width, Math.random() * dust.height, (Math.random() * 0.6 + 0.25) * dpr, 0, Math.PI * 2);
         d.fill();
       }
     };
@@ -202,7 +202,23 @@ export function Constellation(props: ConstellationProps) {
       const pos = new Map<string, { x: number; y: number }>();
       for (const n of nodes) pos.set(n.id, toScreen(n.x!, n.y!));
 
-      // Threads.
+      // Chart grid: faint rings and axes around the sky's centre, like a star atlas.
+      ctx.strokeStyle = 'rgba(232,228,220,0.045)';
+      ctx.lineWidth = 1;
+      const maxR = Math.min(w - area.left - area.right, h - area.top - area.bottom) * 0.48;
+      for (const f of [0.33, 0.66, 1]) {
+        ctx.beginPath();
+        circle(area.cx, area.cy, maxR * f);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(area.cx - maxR, area.cy);
+      ctx.lineTo(area.cx + maxR, area.cy);
+      ctx.moveTo(area.cx, area.cy - maxR);
+      ctx.lineTo(area.cx, area.cy + maxR);
+      ctx.stroke();
+
+      // Threads: hairlines. Supersedes dashed, open contradictions a steady muted red.
       for (const e of edgesRef.current) {
         const s = e.source as Node;
         const d = e.target as Node;
@@ -214,22 +230,20 @@ export function Constellation(props: ConstellationProps) {
         ctx.moveTo(a.x, a.y);
         ctx.lineTo(b.x, b.y);
         ctx.setLineDash([]);
+        ctx.lineWidth = touchesFocus ? 1 : 0.75;
         if (e.type === 'contradicts' && !e.resolved) {
-          ctx.strokeStyle = `rgba(255,122,107,${0.45 + 0.35 * Math.sin(t / 320)})`;
-          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = `rgba(214,120,106,${touchesFocus ? 0.9 : 0.6})`;
         } else if (e.type === 'supersedes') {
-          ctx.setLineDash([3, 4]);
-          ctx.strokeStyle = `rgba(242,237,230,${touchesFocus ? 0.6 : 0.24})`;
-          ctx.lineWidth = 1;
+          ctx.setLineDash([2, 3]);
+          ctx.strokeStyle = `rgba(232,228,220,${touchesFocus ? 0.5 : 0.2})`;
         } else {
-          ctx.strokeStyle = `rgba(242,237,230,${touchesFocus ? 0.4 : e.type === 'supports' ? 0.12 : 0.06})`;
-          ctx.lineWidth = 0.8;
+          ctx.strokeStyle = `rgba(232,228,220,${touchesFocus ? 0.35 : e.type === 'supports' ? 0.1 : 0.05})`;
         }
         ctx.stroke();
       }
       ctx.setLineDash([]);
 
-      // Stars.
+      // Stars: crisp dots. Opacity is retention; nothing glows.
       for (const n of nodes) {
         if (!visible(n)) continue;
         const [r, g, b] = KIND_RGB[n.m.kind];
@@ -238,74 +252,82 @@ export function Constellation(props: ConstellationProps) {
         const dimOthers = p.highlightIds.size > 0 && !highlighted;
 
         if (n.m.status !== 'active') {
-          ctx.strokeStyle = `rgba(${r},${g},${b},${dimOthers ? 0.12 : 0.32})`;
-          ctx.lineWidth = 1;
+          ctx.strokeStyle = `rgba(${r},${g},${b},${dimOthers ? 0.12 : 0.3})`;
+          ctx.lineWidth = 0.75;
           ctx.beginPath();
-          circle(x, y, n.r * 0.8);
+          circle(x, y, Math.max(2, n.r * 0.85));
           ctx.stroke();
         } else {
           const R = retentionAt(n.m, p.warpDays, p.timeWarp, now);
           const faded = R < FADED_THRESHOLD;
-          const twinkle = 0.88 + 0.12 * Math.sin(t / 900 + n.phase);
-          const bright = Math.max(0.05, Math.min(1, R)) * twinkle * (dimOthers ? 0.3 : 1);
-          const radius = faded ? Math.max(1.1, n.r * 0.4) : n.r * (0.75 + 0.25 * Math.min(1, R));
-          if (!faded) {
-            const glow = ctx.createRadialGradient(x, y, 0, x, y, radius * 4.5);
-            glow.addColorStop(0, `rgba(${r},${g},${b},${0.42 * bright})`);
-            glow.addColorStop(1, `rgba(${r},${g},${b},0)`);
-            ctx.fillStyle = glow;
-            ctx.beginPath();
-            circle(x, y, radius * 4.5);
-            ctx.fill();
-          }
-          ctx.fillStyle = `rgba(${r},${g},${b},${faded ? 0.2 : 0.3 + 0.7 * bright})`;
+          const alpha = (faded ? 0.16 : 0.3 + 0.7 * Math.min(1, R)) * (dimOthers ? 0.35 : 1);
+          ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
           ctx.beginPath();
-          circle(x, y, radius);
+          circle(x, y, faded ? 1.1 : n.r);
           ctx.fill();
+          // Well-used, still-strong memories get a fine orbit ring.
+          if (!faded && n.m.recallCount >= 4 && R > 0.5 && !dimOthers) {
+            ctx.strokeStyle = `rgba(${r},${g},${b},${0.18 * R})`;
+            ctx.lineWidth = 0.75;
+            ctx.beginPath();
+            circle(x, y, n.r + 3.5);
+            ctx.stroke();
+          }
         }
 
-        if (highlighted || n.id === p.selectedId) {
-          ctx.strokeStyle = `rgba(245,181,91,${0.6 + 0.3 * Math.sin(t / 400)})`;
-          ctx.lineWidth = 1.2;
+        if (highlighted || n.id === p.selectedId || n.id === focus) {
+          // Reticle: a thin ring with four ticks.
+          const rr = n.r + 6;
+          ctx.strokeStyle = n.id === p.selectedId ? 'rgba(232,228,220,0.9)' : 'rgba(214,182,132,0.85)';
+          ctx.lineWidth = 1;
           ctx.beginPath();
-          circle(x, y, n.r + 6);
+          circle(x, y, rr);
+          ctx.moveTo(x + rr + 2, y);
+          ctx.lineTo(x + rr + 6, y);
+          ctx.moveTo(x - rr - 2, y);
+          ctx.lineTo(x - rr - 6, y);
+          ctx.moveTo(x, y + rr + 2);
+          ctx.lineTo(x, y + rr + 6);
+          ctx.moveTo(x, y - rr - 2);
+          ctx.lineTo(x, y - rr - 6);
           ctx.stroke();
         }
       }
 
-      // Flares: a ring ripples out when a memory is stored or recalled.
+      // Activity: one thin ring expands once when a memory is stored or recalled.
       const nowMs = performance.now();
       for (const [id, start] of p.flares) {
         const n = nodesRef.current.get(id);
         const age = nowMs - start;
-        if (!n || age < 0 || age > 1800 || !visible(n)) continue;
-        const q = age / 1800;
+        if (!n || age < 0 || age > 1400 || !visible(n)) continue;
+        const q = age / 1400;
+        const ease = 1 - (1 - q) ** 3;
         const { x, y } = pos.get(id)!;
-        ctx.strokeStyle = `rgba(245,181,91,${(1 - q) * 0.9})`;
-        ctx.lineWidth = 2 * (1 - q) + 0.5;
+        ctx.strokeStyle = `rgba(214,182,132,${(1 - q) * 0.55})`;
+        ctx.lineWidth = 0.75;
         ctx.beginPath();
-        circle(x, y, n.r + q * 38);
+        circle(x, y, n.r + 2 + ease * 22);
         ctx.stroke();
       }
 
-      // Labels for the focused / highlighted stars.
-      ctx.font = `500 12px ${family}, ui-sans-serif, system-ui`;
+      // Labels for the focused / labelled star.
+      ctx.font = `500 11px ${family}, ui-sans-serif, system-ui`;
       for (const n of nodes) {
         if (!visible(n) || !(n.id === focus || n.id === p.labelId)) continue;
         const { x, y } = pos.get(n.id)!;
-        const text = n.m.content.length > 54 ? `${n.m.content.slice(0, 53)}…` : n.m.content;
+        const text = n.m.content.length > 56 ? `${n.m.content.slice(0, 55)}…` : n.m.content;
         const tw = ctx.measureText(text).width;
-        const bx = Math.min(Math.max(area.left + 8, x + 12), w - (w >= 768 ? area.right : 0) - tw - 28);
-        const by = Math.max(8, y - 34);
-        ctx.fillStyle = 'rgba(14,14,17,0.9)';
-        ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+        const bx = Math.min(Math.max(area.left + 8, x + 16), w - (w >= 768 ? area.right : 0) - tw - 24);
+        const by = Math.max(8, y - 30);
+        ctx.fillStyle = 'rgba(12,12,14,0.92)';
+        ctx.strokeStyle = 'rgba(255,255,255,0.1)';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.roundRect(bx, by, tw + 20, 24, 12);
+        ctx.rect(Math.round(bx) + 0.5, Math.round(by) + 0.5, Math.round(tw + 16), 22);
         ctx.fill();
         ctx.stroke();
-        ctx.fillStyle = n.m.status === 'active' ? '#f2ede6' : '#8a8780';
-        ctx.fillText(text, bx + 10, by + 16);
+        ctx.fillStyle = n.m.status === 'active' ? '#ece8e1' : '#8a8780';
+        ctx.fillText(text, bx + 8, by + 15);
       }
 
       raf = requestAnimationFrame(draw);

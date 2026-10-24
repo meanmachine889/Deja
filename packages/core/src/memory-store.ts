@@ -101,11 +101,12 @@ export class MemoryStore implements Store {
     this.events.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     return row;
   }
-  async listEvents(ownerId: string, opts: { project?: string; types?: EventType[]; limit?: number } = {}) {
+  async listEvents(ownerId: string, opts: { project?: string; types?: EventType[]; memoryId?: string; limit?: number } = {}) {
     return this.events
       .filter((e) => e.ownerId === ownerId)
       .filter((e) => !opts.project || e.project === opts.project)
       .filter((e) => !opts.types || opts.types.includes(e.type))
+      .filter((e) => !opts.memoryId || e.memoryId === opts.memoryId)
       .slice()
       .reverse()
       .slice(0, opts.limit ?? 50);

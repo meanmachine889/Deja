@@ -41,35 +41,35 @@ export default function LoginPage() {
     <main className="dot-grid flex min-h-dvh items-center justify-center bg-void px-4">
       <div className="w-full max-w-sm">
         <p className="flex items-center gap-2 font-serif text-2xl">
-          <span className="h-2 w-2 rounded-full bg-amber shadow-[0_0_12px_#f5b55b]" /> déjà
+          <span className="h-2 w-2 rounded-full bg-amber" /> déjà
         </p>
         {userId ? (
-          <div className="glass mt-6 rounded-[20px] p-6">
+          <div className="glass mt-6 p-6">
             <h1 className="font-serif text-3xl leading-tight">Connect your agent.</h1>
             <p className="mt-2 text-sm text-mute">Put your owner id in the repo’s .env, then add the MCP server to Claude Code.</p>
-            <pre className="mt-4 overflow-x-auto rounded-xl border border-line bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-ink-2">
+            <pre className="mt-4 overflow-x-auto border border-line bg-black/40 p-3 font-mono text-[11px] leading-relaxed text-ink-2">
               {install}
             </pre>
             <div className="mt-4 flex gap-2">
               <button
                 onClick={() => navigator.clipboard.writeText(install)}
-                className="inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-ink-2 hover:border-line-2"
+                className="inline-flex items-center gap-1.5 border border-line px-3 py-1.5 text-xs text-ink-2 hover:border-line-2"
               >
                 <Copy size={12} /> Copy
               </button>
-              <button onClick={() => router.push('/brain')} className="rounded-full bg-ink px-4 py-1.5 text-xs font-medium text-void">
+              <button onClick={() => router.push('/brain')} className=" bg-ink px-4 py-1.5 text-xs font-medium text-void">
                 Open brain →
               </button>
             </div>
           </div>
         ) : (
-          <form onSubmit={submit} className="glass mt-6 flex flex-col gap-3 rounded-[20px] p-6">
+          <form onSubmit={submit} className="glass mt-6 flex flex-col gap-3 p-6">
             <h1 className="font-serif text-3xl leading-tight">{mode === 'signin' ? 'Welcome back.' : 'Give your agents a memory.'}</h1>
             {mode === 'signup' && <Field label="Name" value={name} onChange={setName} autoComplete="name" />}
             <Field label="Email" type="email" value={email} onChange={setEmail} autoComplete="email" required />
             <Field label="Password" type="password" value={password} onChange={setPassword} autoComplete={mode === 'signin' ? 'current-password' : 'new-password'} required minLength={8} />
             {error && <p className="text-xs text-conflict">{error}</p>}
-            <button disabled={busy} className="mt-1 rounded-full bg-amber py-2.5 text-sm font-medium text-void transition hover:brightness-110 disabled:opacity-50">
+            <button disabled={busy} className="mt-1 bg-amber py-2.5 text-sm font-medium text-void transition hover:brightness-110 disabled:opacity-50">
               {busy ? '…' : mode === 'signin' ? 'Sign in' : 'Create account'}
             </button>
             <button type="button" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')} className="text-xs text-mute hover:text-ink">
@@ -101,7 +101,7 @@ function Field(props: {
         autoComplete={props.autoComplete}
         required={props.required}
         minLength={props.minLength}
-        className="rounded-xl border border-line bg-black/30 px-3 py-2 text-sm text-ink focus:border-amber/50 focus:outline-none"
+        className=" border border-line bg-black/30 px-3 py-2 text-sm text-ink focus:border-amber/50 focus:outline-none"
       />
     </label>
   );

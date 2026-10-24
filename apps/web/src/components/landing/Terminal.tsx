@@ -63,7 +63,7 @@ export function Terminal() {
         <span className="ml-2 font-mono text-[11px] text-faint">claude-code · acme-shop</span>
         <span
           className={`ml-auto border px-2 py-0.5 font-mono text-[10px] transition-opacity duration-500 ${
-            t > 2100 ? 'border-[#9fc2ff]/30 text-[#9fc2ff] opacity-100' : 'border-transparent opacity-0'
+            t > 2100 ? 'border-[#96acd0]/30 text-[#96acd0] opacity-100' : 'border-transparent opacity-0'
           }`}
         >
           1 superseded

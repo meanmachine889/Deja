@@ -30,6 +30,15 @@ export function BrainApp() {
   // cluster), ignoring the recall dropdown so opening results doesn't squash the sky.
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerH, setHeaderH] = useState(88);
+  // Render one drawer (rail or overlay), not both hidden by CSS: each instance fetches.
+  const [wide, setWide] = useState(true);
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 768px)');
+    const update = () => setWide(mq.matches);
+    update();
+    mq.addEventListener('change', update);
+    return () => mq.removeEventListener('change', update);
+  }, []);
   useEffect(() => {
     const el = headerRef.current;
     if (!el) return;
@@ -112,10 +121,6 @@ export function BrainApp() {
 
   return (
     <main className="relative h-dvh w-full overflow-hidden bg-void">
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 45%, rgba(245,181,91,0.05), transparent 70%)' }}
-      />
       {data && (
         <Constellation
           memories={memories}
@@ -134,8 +139,8 @@ export function BrainApp() {
 
       {/* Top bar */}
       <header className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col items-center gap-3 p-4 lg:flex-row lg:items-start lg:justify-between">
-        <Link href="/" className="glass pointer-events-auto flex items-center gap-2 rounded-full px-4 py-2">
-          <span className="h-2 w-2 rounded-full bg-amber shadow-[0_0_12px_#f5b55b]" />
+        <Link href="/" className="glass pointer-events-auto flex items-center gap-2 px-4 py-2">
+          <span className="h-2 w-2 rounded-full bg-amber" />
           <span className="font-serif text-xl leading-none">déjà</span>
         </Link>
         <div className="pointer-events-auto flex w-full max-w-xl flex-col items-center gap-2">
@@ -155,11 +160,11 @@ export function BrainApp() {
           {hits && <RecallResults hits={hits} onPick={setSelected} onClear={() => setHits(null)} />}
           {toast && <Toast text={toast} onDone={() => setToast(null)} />}
         </div>
-        <div ref={headerRef} className="glass pointer-events-auto flex items-center gap-1 rounded-full p-1">
+        <div ref={headerRef} className="glass pointer-events-auto flex items-center gap-1 p-1">
           <select
             value={project}
             onChange={(e) => setProject(e.target.value)}
-            className="rounded-full bg-transparent px-3 py-1.5 text-xs text-ink-2 focus:outline-none"
+            className=" bg-transparent px-3 py-1.5 text-xs text-ink-2 focus:outline-none"
             aria-label="Project"
           >
             <option value="all">All projects</option>
@@ -171,7 +176,7 @@ export function BrainApp() {
           </select>
           <button
             onClick={() => setConflictsOpen(true)}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs transition ${conflicts.length ? 'bg-conflict/15 text-conflict' : 'text-mute hover:text-ink'}`}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition ${conflicts.length ? 'bg-conflict/15 text-conflict' : 'text-mute hover:text-ink'}`}
           >
             <Zap size={12} /> {conflicts.length} conflict{conflicts.length === 1 ? '' : 's'}
           </button>
@@ -182,7 +187,7 @@ export function BrainApp() {
                 clearJwt();
                 router.replace('/login');
               }}
-              className="rounded-full p-2 text-mute hover:text-ink"
+              className=" p-2 text-mute hover:text-ink"
               aria-label="Sign out"
             >
               <LogOut size={13} />
@@ -206,7 +211,7 @@ export function BrainApp() {
             />
           </div>
           <div className="flex min-h-0 flex-col justify-start">
-            {selected ? (
+            {selected && wide ? (
               <Drawer
                 id={selected}
                 version={version}
@@ -223,8 +228,8 @@ export function BrainApp() {
       )}
 
       {/* Mobile drawer */}
-      {data && selected && (
-        <div className="absolute inset-x-4 bottom-20 top-40 z-30 flex md:hidden">
+      {data && selected && !wide && (
+        <div className="absolute inset-x-4 bottom-20 top-40 z-30 flex">
           <Drawer id={selected} version={version} timeWarp={data.timeWarp} onClose={() => setSelected(null)} onPick={setSelected} onChanged={load} />
         </div>
       )}

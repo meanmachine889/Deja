@@ -197,10 +197,11 @@ export class AppwriteStore implements Store {
     return toEvent(row);
   }
 
-  async listEvents(ownerId: string, opts: { project?: string; types?: EventType[]; limit?: number } = {}) {
+  async listEvents(ownerId: string, opts: { project?: string; types?: EventType[]; memoryId?: string; limit?: number } = {}) {
     const queries = [Query.equal('ownerId', ownerId), Query.orderDesc('at'), Query.limit(opts.limit ?? 50)];
     if (opts.project) queries.push(Query.equal('project', opts.project));
     if (opts.types) queries.push(Query.equal('type', opts.types));
+    if (opts.memoryId) queries.push(Query.equal('memoryId', opts.memoryId));
     const res = await this.tables.listRows({ databaseId: TABLES_DB_ID, tableId: T.events, queries });
     return res.rows.map(toEvent);
   }

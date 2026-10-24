@@ -7,7 +7,7 @@ const FEATURES = [
     n: '1.0',
     title: 'It notices when it’s wrong',
     tag: 'contradictions',
-    body: 'New memories are checked against old ones. A change supersedes the stale fact and keeps the history; a real disagreement becomes a one-click conflict.',
+    body: 'Your agent names what a change makes outdated, and Déjà checks everything else. Stale facts are superseded with history kept; real disagreements become one-click conflicts.',
     vignette: <Supersede />,
   },
   {
@@ -73,7 +73,7 @@ function Supersede() {
         <p className="font-mono text-[10px] text-faint">claude-code · Sep 2</p>
         <p className="mt-1 font-serif text-lg text-mute line-through decoration-1">The app database is Postgres on Supabase</p>
       </Card>
-      <div className="flex items-center gap-2 pl-4 text-[11px] text-[#9fc2ff]">
+      <div className="flex items-center gap-2 pl-4 text-[11px] text-[#96acd0]">
         <GitBranch size={12} /> superseded · “the newer memory describes a migration”
       </div>
       <Card>
@@ -136,9 +136,9 @@ function Curves() {
           faded
         </text>
         <polyline points={decay} fill="none" stroke="rgba(185,179,168,.6)" strokeWidth="1.5" />
-        <polyline points={pts.join(' ')} fill="none" stroke="#f5b55b" strokeWidth="2" />
+        <polyline points={pts.join(' ')} fill="none" stroke="#d6b684" strokeWidth="2" />
         {recalls.slice(1).map((d) => (
-          <circle key={d} cx={(d / 60) * W} cy={10} r="3.5" fill="#f5b55b" />
+          <circle key={d} cx={(d / 60) * W} cy={10} r="3.5" fill="#d6b684" />
         ))}
       </svg>
       <p className="mt-3 text-xs text-mute">
@@ -168,31 +168,31 @@ function Why() {
 
 function Sky() {
   const stars = [
-    [18, 30, 5, '#a8e2c0'],
-    [27, 22, 3.5, '#a8e2c0'],
-    [24, 42, 4, '#a8e2c0'],
+    [18, 30, 5, '#96c2aa'],
+    [27, 22, 3.5, '#96c2aa'],
+    [24, 42, 4, '#96c2aa'],
     [52, 18, 4.5, '#f2ede6'],
     [60, 30, 3, '#f2ede6'],
-    [78, 36, 5, '#9fc2ff'],
-    [86, 50, 3.5, '#9fc2ff'],
-    [38, 66, 4, '#f5b55b'],
-    [46, 74, 3, '#f5b55b'],
-    [70, 72, 4, '#e7b3df'],
+    [78, 36, 5, '#96acd0'],
+    [86, 50, 3.5, '#96acd0'],
+    [38, 66, 4, '#d6b684'],
+    [46, 74, 3, '#d6b684'],
+    [70, 72, 4, '#c4a6be'],
   ] as const;
   return (
     <div className="relative mx-auto aspect-[4/3] w-full max-w-md">
       <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 h-full w-full" aria-hidden>
-        <line x1="78" y1="36" x2="86" y2="50" stroke="#ff7a6b" strokeWidth="0.35" opacity="0.8" />
-        <line x1="52" y1="18" x2="60" y2="30" stroke="rgba(242,237,230,.3)" strokeWidth="0.25" strokeDasharray="1 1.2" />
+        <line x1="78" y1="36" x2="86" y2="50" stroke="#d6786a" strokeWidth="0.35" opacity="0.8" />
+        <line x1="52" y1="18" x2="60" y2="30" stroke="rgba(232,228,220,.3)" strokeWidth="0.25" strokeDasharray="1 1.2" />
       </svg>
       {stars.map(([x, y, r, c], i) => (
         <span
           key={i}
           className="absolute rounded-full"
-          style={{ left: `${x}%`, top: `${y}%`, width: r * 2, height: r * 2, background: c, boxShadow: `0 0 ${r * 5}px ${r}px ${c}55`, transform: 'translate(-50%,-50%)' }}
+          style={{ left: `${x}%`, top: `${y}%`, width: r * 1.4, height: r * 1.4, background: c, transform: 'translate(-50%,-50%)' }}
         />
       ))}
-      <span className="absolute left-[38%] top-[66%] h-10 w-10 -translate-x-1/2 -translate-y-1/2 animate-ping rounded-full border border-amber/60" />
+      <span className="absolute left-[38%] top-[66%] h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-amber/70" />
       <div className="glass absolute right-0 top-0 w-44 p-3 text-[11px]">
         <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-faint">live</p>
         <p className="mt-1.5 text-ink-2">
@@ -200,7 +200,7 @@ function Sky() {
         </p>
         <p className="text-mute">“small pull requests”</p>
         <p className="mt-1.5 text-ink-2">
-          claude-code <span className="text-[#9fc2ff]">superseded</span>
+          claude-code <span className="text-[#96acd0]">superseded</span>
         </p>
         <p className="text-mute">Vercel → Appwrite Sites</p>
       </div>
@@ -208,7 +208,7 @@ function Sky() {
         today
         <span className="relative h-0.5 flex-1 rounded bg-white/15">
           <span className="absolute inset-y-0 left-0 w-2/3 rounded bg-amber" />
-          <span className="absolute -top-1.5 left-2/3 h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-ink shadow-[0_0_12px_#f5b55b]" />
+          <span className="absolute -top-1.5 left-2/3 h-3 w-3 -translate-x-1/2 rounded-full bg-ink" />
         </span>
         +60d
       </div>

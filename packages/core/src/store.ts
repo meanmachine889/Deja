@@ -34,7 +34,10 @@ export interface Store {
   ): Promise<Link[]>;
 
   insertEvent(event: NewEvent): Promise<MemoryEvent>;
-  listEvents(ownerId: string, opts?: { project?: string; types?: EventType[]; limit?: number }): Promise<MemoryEvent[]>;
+  listEvents(
+    ownerId: string,
+    opts?: { project?: string; types?: EventType[]; memoryId?: string; limit?: number },
+  ): Promise<MemoryEvent[]>;
 
   upsertSession(session: Session): Promise<Session>;
   getSession(id: string): Promise<Session | null>;

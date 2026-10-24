@@ -20,8 +20,8 @@ claude mcp add deja -s local -- pnpm -s --dir /Users/yashbharadwaj/deja mcp
 3. Dashboard: `pnpm web`, open http://localhost:3100/brain, signed in. Window ≥ 1280px wide so the
    stats and live feed panels show.
 4. Claude Code is logged in: run `claude`, then `/login` if asked.
-5. Optional but better: put `ANTHROPIC_API_KEY` in `~/deja/.env` so the contradiction judge uses
-   Claude instead of keyword rules. Restart Claude Code afterwards so the MCP server reloads.
+5. No Anthropic key needed: the agent reports changes itself via `replaces`, and keyword rules catch
+   the rest. (`ANTHROPIC_API_KEY` is optional; `pnpm check:judge` verifies it if you add one.)
 6. In Claude Code, `/mcp` should show `deja · connected`.
 
 Lay out the screen: terminal on the left, dashboard on the right.
@@ -38,10 +38,12 @@ Lay out the screen: terminal on the left, dashboard on the right.
 2. **Supersede.** Prompt:
    > Heads up: we moved error tracking from Sentry to Highlight. Remember that.
 
-   Watch: a new star ignites; the old Sentry star dims to a hollow ring with a dashed thread to the
-   new one; the feed shows `superseded`. Claude's reply quotes Déjà: *Superseded "Errors are tracked
-   in Sentry…" → "…"*. (Verified: this sentence is 0.247 from the Sentry memory and is judged
-   `updates` even without an Anthropic key.)
+   Expected: Claude recalls the Sentry memory, then calls `remember` with its id in `replaces`
+   (the agent itself says what's outdated). Reply quotes Déjà: *Superseded "Errors are tracked in
+   Sentry…" → "…" (replaced as claude-code reported: …)*.
+   Watch: a new dot appears; the Sentry dot becomes a hollow ring with a dashed thread to it; the feed
+   shows `superseded`. Click the new dot: History shows the reason. (If Claude skips `replaces`, Déjà's
+   own check still catches it: this sentence is 0.247 from the Sentry memory and judged `updates`.)
 
 3. **Conflict.** Prompt:
    > Are there any contradictions in what you remember?
@@ -49,7 +51,7 @@ Lay out the screen: terminal on the left, dashboard on the right.
    Claude lists the Friday-deploy conflict and asks which is right. Answer:
    > Deploys are frozen on Fridays. Keep that one.
 
-   Watch: the red pulsing thread disappears; the conflict badge goes to 0; feed shows `resolved`.
+   Watch: the red thread disappears; the conflict badge goes to 0; feed shows `resolved`.
    (Or resolve it on the dashboard with the conflict inbox: **Keep this**.)
 
 Quit with `/exit`.

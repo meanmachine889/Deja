@@ -1,16 +1,17 @@
 'use client';
-// Ambient hero sky: drifting dust, a few memory constellations, and a scripted loop where an old
-// memory is superseded (it dims to a ring, a new star ignites, a dashed thread links them).
+// Ambient hero sky in the dashboard's star-atlas style: crisp dots, hairline threads, faint chart
+// rings, and a scripted loop where an old memory is superseded (it becomes a ring, a new dot appears,
+// a dashed thread links them).
 import { useEffect, useRef } from 'react';
 
-type Star = { x: number; y: number; r: number; c: [number, number, number]; phase: number; life: number };
+type Star = { x: number; y: number; r: number; c: [number, number, number]; life: number };
 
 const TINTS: [number, number, number][] = [
-  [242, 237, 230],
-  [245, 181, 91],
-  [159, 194, 255],
-  [168, 226, 192],
-  [231, 179, 223],
+  [232, 228, 220],
+  [214, 182, 132],
+  [150, 172, 208],
+  [150, 194, 170],
+  [196, 166, 190],
 ];
 
 // Constellation layout in unit space (0..1), loosely clustered like the real brain view.
@@ -48,18 +49,17 @@ export function HeroSky({ className = '' }: { className?: string }) {
         stars.push({
           x: cl.cx + (rand() - 0.5) * 0.16,
           y: cl.cy + (rand() - 0.5) * 0.18,
-          r: 2 + rand() * 3.2,
+          r: 1.6 + rand() * 2,
           c: TINTS[cl.tint]!,
-          phase: rand() * Math.PI * 2,
-          life: 0.55 + rand() * 0.45,
+          life: 0.5 + rand() * 0.5,
         });
       }
     }
-    const dust = Array.from({ length: 220 }, () => ({ x: rand(), y: rand(), r: rand() * 0.9 + 0.2, a: rand() * 0.35 + 0.05, p: rand() * 6 }));
+    const dust = Array.from({ length: 160 }, () => ({ x: rand(), y: rand(), r: rand() * 0.6 + 0.25, a: rand() * 0.16 + 0.03 }));
 
-    // The supersede story: `old` fades to a ring, `next` ignites beside it.
+    // The supersede story: `old` becomes a hollow ring, `next` appears beside it.
     const old = stars[11]!;
-    const next: Star = { ...old, x: old.x + 0.07, y: old.y + 0.05, c: [159, 194, 255], r: 4.6, phase: 1 };
+    const next: Star = { ...old, x: old.x + 0.07, y: old.y + 0.05, c: [150, 172, 208], r: 3, life: 1 };
     const LOOP = 7000;
 
     const resize = () => {
@@ -74,22 +74,11 @@ export function HeroSky({ className = '' }: { className?: string }) {
     const ro = new ResizeObserver(resize);
     ro.observe(canvas);
 
-    const glowStar = (s: Star, bright: number, t: number) => {
-      const x = s.x * w;
-      const y = s.y * h;
-      const tw = reduced ? 1 : 0.85 + 0.15 * Math.sin(t / 900 + s.phase);
-      const b = bright * tw;
-      const [r, g, bl] = s.c;
-      const glow = ctx.createRadialGradient(x, y, 0, x, y, s.r * 6);
-      glow.addColorStop(0, `rgba(${r},${g},${bl},${0.4 * b})`);
-      glow.addColorStop(1, `rgba(${r},${g},${bl},0)`);
-      ctx.fillStyle = glow;
+    const dot = (s: Star, alpha: number) => {
+      const [r, g, b] = s.c;
+      ctx.fillStyle = `rgba(${r},${g},${b},${alpha})`;
       ctx.beginPath();
-      ctx.arc(x, y, s.r * 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = `rgba(${r},${g},${bl},${0.35 + 0.65 * b})`;
-      ctx.beginPath();
-      ctx.arc(x, y, s.r, 0, Math.PI * 2);
+      ctx.arc(s.x * w, s.y * h, s.r, 0, Math.PI * 2);
       ctx.fill();
     };
 
@@ -98,16 +87,33 @@ export function HeroSky({ className = '' }: { className?: string }) {
       ctx.clearRect(0, 0, w, h);
 
       for (const d of dust) {
-        const a = reduced ? d.a : d.a * (0.7 + 0.3 * Math.sin(t / 1400 + d.p));
-        ctx.fillStyle = `rgba(242,237,230,${a})`;
+        ctx.fillStyle = `rgba(232,228,220,${d.a})`;
         ctx.beginPath();
         ctx.arc(d.x * w, d.y * h, d.r, 0, Math.PI * 2);
         ctx.fill();
       }
 
-      // Faint threads inside each cluster.
-      ctx.strokeStyle = 'rgba(242,237,230,0.07)';
-      ctx.lineWidth = 0.8;
+      // Faint chart rings and axes.
+      const cx = w / 2;
+      const cy = h / 2;
+      const R = Math.min(w, h) * 0.46;
+      ctx.strokeStyle = 'rgba(232,228,220,0.045)';
+      ctx.lineWidth = 1;
+      for (const f of [0.4, 0.75, 1.1]) {
+        ctx.beginPath();
+        ctx.arc(cx, cy, R * f, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.beginPath();
+      ctx.moveTo(0, cy);
+      ctx.lineTo(w, cy);
+      ctx.moveTo(cx, 0);
+      ctx.lineTo(cx, h);
+      ctx.stroke();
+
+      // Hairline threads inside each cluster.
+      ctx.strokeStyle = 'rgba(232,228,220,0.08)';
+      ctx.lineWidth = 0.75;
       let i = 0;
       for (const cl of CLUSTERS) {
         const group = stars.slice(i, i + cl.n);
@@ -121,35 +127,34 @@ export function HeroSky({ className = '' }: { className?: string }) {
       }
 
       const phase = reduced ? 0.8 : (t % LOOP) / LOOP;
-      // 0.0–0.35 old shines · 0.35–0.55 supersede happens · 0.55–1 new shines, old is a ring.
+      // 0.0–0.35 old is active · 0.35–0.55 supersede happens · 0.55–1 new is active, old is a ring.
       const swap = Math.min(1, Math.max(0, (phase - 0.35) / 0.2));
 
-      for (const s of stars) if (s !== old) glowStar(s, s.life, t);
+      for (const s of stars) if (s !== old) dot(s, 0.3 + 0.7 * s.life);
 
-      // Old memory: bright → hollow ring.
-      if (swap < 1) glowStar(old, (1 - swap) * 0.9, t);
-      ctx.strokeStyle = `rgba(159,194,255,${0.35 * swap})`;
-      ctx.lineWidth = 1;
+      if (swap < 1) dot(old, (1 - swap) * 0.9);
+      ctx.strokeStyle = `rgba(150,172,208,${0.4 * swap})`;
+      ctx.lineWidth = 0.75;
       ctx.beginPath();
-      ctx.arc(old.x * w, old.y * h, old.r + 1, 0, Math.PI * 2);
+      ctx.arc(old.x * w, old.y * h, old.r + 1.5, 0, Math.PI * 2);
       ctx.stroke();
 
       if (swap > 0) {
-        ctx.setLineDash([3, 4]);
-        ctx.strokeStyle = `rgba(242,237,230,${0.4 * swap})`;
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = `rgba(232,228,220,${0.35 * swap})`;
         ctx.beginPath();
         ctx.moveTo(old.x * w, old.y * h);
         ctx.lineTo(next.x * w, next.y * h);
         ctx.stroke();
         ctx.setLineDash([]);
-        glowStar(next, swap, t);
-        // Ignition ripple.
-        if (swap < 1 || phase < 0.75) {
-          const q = Math.min(1, (phase - 0.35) / 0.4);
-          ctx.strokeStyle = `rgba(245,181,91,${(1 - q) * 0.8})`;
-          ctx.lineWidth = 2 * (1 - q) + 0.4;
+        dot(next, swap);
+        // One thin ring marks the new memory as it lands.
+        const q = Math.min(1, (phase - 0.35) / 0.35);
+        if (q < 1) {
+          ctx.strokeStyle = `rgba(214,182,132,${(1 - q) * 0.55})`;
+          ctx.lineWidth = 0.75;
           ctx.beginPath();
-          ctx.arc(next.x * w, next.y * h, next.r + q * 42, 0, Math.PI * 2);
+          ctx.arc(next.x * w, next.y * h, next.r + 2 + (1 - (1 - q) ** 3) * 22, 0, Math.PI * 2);
           ctx.stroke();
         }
       }

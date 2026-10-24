@@ -15,14 +15,14 @@ export function KindDot({ kind, size = 8 }: { kind: Kind; size?: number }) {
   return (
     <span
       className="inline-block shrink-0 rounded-full"
-      style={{ width: size, height: size, background: rgb(kind), boxShadow: `0 0 10px ${rgb(kind, 0.6)}` }}
+      style={{ width: size, height: size, background: rgb(kind) }}
     />
   );
 }
 
 export function Pill({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[11px] text-ink-2 ${className}`}>
+    <span className={`inline-flex items-center gap-1.5 border border-line px-2.5 py-1 text-[11px] text-ink-2 ${className}`}>
       {children}
     </span>
   );
@@ -60,14 +60,14 @@ export function AskBar(props: {
   };
 
   return (
-    <form onSubmit={submit} className="glass flex w-full max-w-xl items-center gap-1 rounded-full p-1 pl-1.5">
-      <div className="flex shrink-0 rounded-full bg-white/[0.04] p-0.5 text-xs">
+    <form onSubmit={submit} className="glass flex w-full max-w-xl items-center gap-1 p-1 pl-1.5">
+      <div className="flex shrink-0 bg-white/[0.04] p-0.5 text-xs">
         {(['ask', 'teach'] as const).map((m) => (
           <button
             key={m}
             type="button"
             onClick={() => setMode(m)}
-            className={`rounded-full px-3 py-1.5 capitalize transition ${mode === m ? 'bg-ink text-void' : 'text-mute hover:text-ink'}`}
+            className={` px-3 py-1.5 capitalize transition ${mode === m ? 'bg-ink text-void' : 'text-mute hover:text-ink'}`}
           >
             {m}
           </button>
@@ -84,7 +84,7 @@ export function AskBar(props: {
       <button
         type="submit"
         disabled={busy}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber text-void transition hover:brightness-110 disabled:opacity-50"
+        className="flex h-8 w-8 shrink-0 items-center justify-center bg-amber text-void transition hover:brightness-110 disabled:opacity-50"
         aria-label="Submit"
       >
         {mode === 'ask' ? <Search size={15} /> : <Sparkles size={15} />}
@@ -122,7 +122,7 @@ export function StatsPanel(props: {
   }, [props.memories]);
 
   return (
-    <aside className="glass pointer-events-auto w-60 rounded-[20px] p-5">
+    <aside className="glass pointer-events-auto w-60 p-5">
       <div className="grid grid-cols-2 gap-x-4 gap-y-5">
         <Stat value={stats.active} label="active memories" />
         <Stat value={pct(stats.avg)} label="avg retention" accent />
@@ -142,7 +142,7 @@ export function StatsPanel(props: {
             <button
               key={k}
               onClick={() => props.toggleKind(k)}
-              className={`flex items-center justify-between rounded-lg px-2 py-1 text-xs capitalize transition hover:bg-white/[0.04] ${props.hiddenKinds.has(k) ? 'opacity-35' : ''}`}
+              className={`flex items-center justify-between px-2 py-1 text-xs capitalize transition hover:bg-white/[0.04] ${props.hiddenKinds.has(k) ? 'opacity-35' : ''}`}
             >
               <span className="flex items-center gap-2 text-ink-2">
                 <KindDot kind={k} size={7} /> {k}
@@ -160,7 +160,7 @@ export function StatsPanel(props: {
             const on = live.some((l) => l.agent === s.agent);
             return (
               <Pill key={s.agent}>
-                <span className={`h-1.5 w-1.5 rounded-full ${on ? 'animate-pulse-dot bg-[#7ee2a8]' : 'bg-faint'}`} />
+                <span className={`h-1.5 w-1.5 rounded-full ${on ? 'animate-pulse-dot bg-[#8fc4a2]' : 'bg-faint'}`} />
                 {s.agent}
               </Pill>
             );
@@ -184,13 +184,13 @@ function Stat({ value, label, accent, warn }: { value: React.ReactNode; label: s
 
 const EVENT_STYLE: Record<MemoryEvent['type'], { label: string; color: string }> = {
   remembered: { label: 'remembered', color: '#f2ede6' },
-  reinforced: { label: 'reinforced', color: '#f5b55b' },
-  recalled: { label: 'recalled', color: '#f5b55b' },
-  superseded: { label: 'superseded', color: '#9fc2ff' },
-  conflict: { label: 'conflict', color: '#ff7a6b' },
-  resolved: { label: 'resolved', color: '#a8e2c0' },
+  reinforced: { label: 'reinforced', color: '#d6b684' },
+  recalled: { label: 'recalled', color: '#d6b684' },
+  superseded: { label: 'superseded', color: '#96acd0' },
+  conflict: { label: 'conflict', color: '#d6786a' },
+  resolved: { label: 'resolved', color: '#96c2aa' },
   forgotten: { label: 'forgot', color: '#8a8780' },
-  session: { label: 'joined', color: '#7ee2a8' },
+  session: { label: 'joined', color: '#8fc4a2' },
 };
 
 /** Collapse bursts (one recall returning five memories) into a single feed row. */
@@ -210,11 +210,11 @@ function groupEvents(events: MemoryEvent[]) {
 export function Feed({ events, fresh, onPick }: { events: MemoryEvent[]; fresh: Set<string>; onPick: (id: string) => void }) {
   const groups = useMemo(() => groupEvents(events), [events]);
   return (
-    <aside className="glass pointer-events-auto flex max-h-full w-72 flex-col rounded-[20px]">
+    <aside className="glass pointer-events-auto flex max-h-full w-72 flex-col">
       <div className="flex items-center justify-between px-5 pb-2 pt-4">
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">Live</p>
         <span className="flex items-center gap-1.5 text-[11px] text-mute">
-          <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-amber" /> realtime
+          <span className="animate-pulse-dot h-1.5 w-1.5 bg-amber" /> realtime
         </span>
       </div>
       <ol className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
@@ -224,7 +224,7 @@ export function Feed({ events, fresh, onPick }: { events: MemoryEvent[]; fresh: 
             <li key={e.id} className={ids.some((id) => fresh.has(id)) ? 'animate-slide-in' : ''}>
               <button
                 onClick={() => e.memoryId && onPick(e.memoryId)}
-                className="w-full rounded-xl px-3 py-2 text-left transition hover:bg-white/[0.04]"
+                className="w-full px-3 py-2 text-left transition hover:bg-white/[0.04]"
               >
                 <div className="flex items-center gap-2 text-[11px]">
                   <span className="font-medium text-ink-2">{e.agent}</span>
@@ -268,7 +268,7 @@ export function Drawer(props: {
 
   const m = why?.memory;
   return (
-    <aside className="glass animate-drawer-in pointer-events-auto flex max-h-full w-[22rem] flex-col overflow-hidden rounded-[20px]">
+    <aside className="glass animate-drawer-in pointer-events-auto flex max-h-full w-[22rem] flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-line px-5 py-3">
         {m ? (
           <span className="flex items-center gap-2 text-xs text-ink-2">
@@ -277,7 +277,7 @@ export function Drawer(props: {
         ) : (
           <span className="text-xs text-mute">Loading…</span>
         )}
-        <button onClick={props.onClose} className="rounded-full p-1 text-mute hover:bg-white/5 hover:text-ink" aria-label="Close">
+        <button onClick={props.onClose} className=" p-1 text-mute hover:bg-white/5 hover:text-ink" aria-label="Close">
           <X size={16} />
         </button>
       </div>
@@ -288,7 +288,7 @@ export function Drawer(props: {
             {m.content}
           </p>
           {m.status !== 'active' && (
-            <Pill className="mt-3 border-[#9fc2ff]/30 text-[#9fc2ff]">
+            <Pill className="mt-3 border-[#96acd0]/30 text-[#96acd0]">
               <GitBranch size={11} /> {m.status}
             </Pill>
           )}
@@ -309,10 +309,16 @@ export function Drawer(props: {
                 <HistoryItem key={x.id} label="Replaced by" m={x} onPick={props.onPick} />
               ))}
               <div className="my-1 flex items-center gap-2 text-xs text-ink">
-                <span className="h-1.5 w-1.5 rounded-full bg-amber" /> this memory
+                <span className="h-1.5 w-1.5 bg-amber" /> this memory
               </div>
               {why.replaced.map((x) => (
-                <HistoryItem key={x.id} label="Replaced" m={x} onPick={props.onPick} />
+                <HistoryItem
+                  key={x.id}
+                  label="Replaced"
+                  m={x}
+                  reason={why.links.find((l) => l.link.type === 'supersedes' && l.link.toId === x.id)?.link.reason}
+                  onPick={props.onPick}
+                />
               ))}
             </Section>
           )}
@@ -325,7 +331,7 @@ export function Drawer(props: {
                   <button
                     key={link.id}
                     onClick={() => props.onPick(other.id)}
-                    className="mb-1.5 block w-full rounded-xl border border-line p-2.5 text-left text-xs transition hover:border-line-2"
+                    className="mb-1.5 block w-full border border-line p-2.5 text-left text-xs transition hover:border-line-2"
                   >
                     <span className={link.type === 'contradicts' && !link.resolved ? 'text-conflict' : 'text-ink-2'}>
                       {link.type}
@@ -344,7 +350,7 @@ export function Drawer(props: {
                 props.onChanged();
                 props.onClose();
               }}
-              className="mt-6 inline-flex items-center gap-1.5 rounded-full border border-line px-3 py-1.5 text-xs text-mute transition hover:border-conflict/40 hover:text-conflict"
+              className="mt-6 inline-flex items-center gap-1.5 border border-line px-3 py-1.5 text-xs text-mute transition hover:border-conflict/40 hover:text-conflict"
             >
               <Trash2 size={12} /> Forget this
             </button>
@@ -355,13 +361,14 @@ export function Drawer(props: {
   );
 }
 
-function HistoryItem({ label, m, onPick }: { label: string; m: Memory; onPick: (id: string) => void }) {
+function HistoryItem({ label, m, reason, onPick }: { label: string; m: Memory; reason?: string; onPick: (id: string) => void }) {
   return (
-    <button onClick={() => onPick(m.id)} className="group mb-1 flex w-full items-start gap-2 rounded-lg py-1 text-left text-xs">
+    <button onClick={() => onPick(m.id)} className="group mb-1 flex w-full items-start gap-2 py-1 text-left text-xs">
       <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full border border-mute" />
       <span>
         <span className="text-faint">{label} · {new Date(m.createdAt).toLocaleDateString()}</span>
         <span className="block text-mute group-hover:text-ink">{m.content}</span>
+        {reason && <span className="mt-0.5 block text-faint italic">{reason}</span>}
       </span>
     </button>
   );
@@ -399,7 +406,7 @@ function RetentionCurve({ memory, timeWarp }: { memory: Memory; timeWarp: number
   const fadeIn = daysUntilFaded(memory.stability, now);
   const thresholdY = H - FADED_THRESHOLD * (H - 4) - 2;
   return (
-    <div className="mt-5 rounded-2xl border border-line bg-white/[0.02] p-4">
+    <div className="mt-5 border border-line bg-white/[0.02] p-4">
       <div className="flex items-end justify-between">
         <div>
           <div className="font-serif text-4xl leading-none text-amber">{pct(memory.status === 'active' ? now : 0)}</div>
@@ -417,13 +424,13 @@ function RetentionCurve({ memory, timeWarp }: { memory: Memory; timeWarp: number
       <svg viewBox={`0 0 ${W} ${H}`} className="mt-3 w-full" preserveAspectRatio="none" aria-hidden>
         <defs>
           <linearGradient id="curve" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0" stopColor="#f5b55b" stopOpacity="0.28" />
-            <stop offset="1" stopColor="#f5b55b" stopOpacity="0" />
+            <stop offset="0" stopColor="#d6b684" stopOpacity="0.28" />
+            <stop offset="1" stopColor="#d6b684" stopOpacity="0" />
           </linearGradient>
         </defs>
         <line x1="0" x2={W} y1={thresholdY} y2={thresholdY} stroke="rgba(255,255,255,.14)" strokeDasharray="3 4" />
         <polygon points={`0,${H} ${pts} ${W},${H}`} fill="url(#curve)" />
-        <polyline points={pts} fill="none" stroke="#f5b55b" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+        <polyline points={pts} fill="none" stroke="#d6b684" strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
       </svg>
       <div className="mt-1 flex justify-between font-mono text-[10px] text-faint">
         <span>today</span>
@@ -448,19 +455,19 @@ export function ConflictInbox({ data, onClose, onResolved }: { data: BrainData; 
   };
   return (
     <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="glass w-full max-w-3xl rounded-[24px] p-6 sm:p-8" onClick={(e) => e.stopPropagation()}>
+      <div className="glass w-full max-w-3xl p-6 sm:p-8" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between">
           <div>
             <h2 className="font-serif text-4xl leading-none">Your agent isn’t sure.</h2>
             <p className="mt-2 text-sm text-mute">These memories disagree and nothing says which is newer. Pick the truth; the other is superseded.</p>
           </div>
-          <button onClick={onClose} className="rounded-full p-1.5 text-mute hover:bg-white/5 hover:text-ink" aria-label="Close">
+          <button onClick={onClose} className=" p-1.5 text-mute hover:bg-white/5 hover:text-ink" aria-label="Close">
             <X size={18} />
           </button>
         </div>
         {data.conflicts.length === 0 && (
           <p className="mt-8 flex items-center gap-2 text-sm text-ink-2">
-            <Check size={16} className="text-[#a8e2c0]" /> No open conflicts. Your agent’s memory is consistent.
+            <Check size={16} className="text-[#96c2aa]" /> No open conflicts. Your agent’s memory is consistent.
           </p>
         )}
         <div className="mt-6 flex flex-col gap-6">
@@ -482,7 +489,7 @@ export function ConflictInbox({ data, onClose, onResolved }: { data: BrainData; 
 
 function ConflictCard({ m, busy, onKeep }: { m: Memory; side: number; busy: boolean; onKeep: () => void }) {
   return (
-    <div className="flex flex-col rounded-2xl border border-line bg-white/[0.02] p-4">
+    <div className="flex flex-col border border-line bg-white/[0.02] p-4">
       <span className="flex items-center gap-2 text-[11px] text-mute">
         <KindDot kind={m.kind} size={6} /> {m.agent} · {new Date(m.createdAt).toLocaleDateString()}
       </span>
@@ -490,7 +497,7 @@ function ConflictCard({ m, busy, onKeep }: { m: Memory; side: number; busy: bool
       <button
         disabled={busy}
         onClick={onKeep}
-        className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-ink px-3.5 py-1.5 text-xs font-medium text-void transition hover:bg-white disabled:opacity-50"
+        className="mt-4 inline-flex w-fit items-center gap-1.5 bg-ink px-3.5 py-1.5 text-xs font-medium text-void transition hover:bg-white disabled:opacity-50"
       >
         <Check size={13} /> Keep this
       </button>
@@ -502,7 +509,7 @@ function ConflictCard({ m, busy, onKeep }: { m: Memory; side: number; busy: bool
 
 export function TimeWarp({ days, onChange, faded }: { days: number; onChange: (d: number) => void; faded: number }) {
   return (
-    <div className="glass pointer-events-auto flex w-full max-w-lg items-center gap-4 rounded-full px-5 py-2.5">
+    <div className="glass pointer-events-auto flex w-full max-w-lg items-center gap-4 px-5 py-2.5">
       <Clock size={14} className="shrink-0 text-amber" />
       <span className="shrink-0 font-mono text-[11px] text-mute">today</span>
       <input
@@ -524,7 +531,7 @@ export function TimeWarp({ days, onChange, faded }: { days: number; onChange: (d
 
 export function RecallResults({ hits, onPick, onClear }: { hits: RecallHit[]; onPick: (id: string) => void; onClear: () => void }) {
   return (
-    <div className="glass animate-slide-in pointer-events-auto w-full max-w-xl rounded-[20px] p-2">
+    <div className="glass animate-slide-in pointer-events-auto w-full max-w-xl p-2">
       <div className="flex items-center justify-between px-3 py-1.5">
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">{hits.length} memories recalled</span>
         <button onClick={onClear} className="text-[11px] text-mute hover:text-ink">
@@ -536,7 +543,7 @@ export function RecallResults({ hits, onPick, onClear }: { hits: RecallHit[]; on
         <button
           key={h.memory.id}
           onClick={() => onPick(h.memory.id)}
-          className="flex w-full items-start gap-3 rounded-xl px-3 py-2 text-left transition hover:bg-white/[0.04]"
+          className="flex w-full items-start gap-3 px-3 py-2 text-left transition hover:bg-white/[0.04]"
         >
           <KindDot kind={h.memory.kind} size={7} />
           <span className="min-w-0 flex-1">
@@ -564,7 +571,7 @@ export function Toast({ text, onDone }: { text: string; onDone: () => void }) {
     return () => clearTimeout(t);
   }, [onDone]);
   return (
-    <div className="glass animate-slide-in pointer-events-auto max-w-xl whitespace-pre-line rounded-2xl px-4 py-3 text-xs leading-relaxed text-ink-2">
+    <div className="glass animate-slide-in pointer-events-auto max-w-xl whitespace-pre-line px-4 py-3 text-xs leading-relaxed text-ink-2">
       {text}
     </div>
   );

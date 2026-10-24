@@ -69,7 +69,7 @@ export default function Landing() {
         {/* Nav: three equal cells */}
         <header className="sticky top-0 z-30 grid grid-cols-2 border-b border-line bg-void/85 backdrop-blur-md md:grid-cols-3">
           <Link href="/" className="flex h-14 items-center gap-2 px-5">
-            <span className="h-2 w-2 rounded-full bg-amber shadow-[0_0_12px_#f5b55b]" />
+            <span className="h-2 w-2 rounded-full bg-amber" />
             <span className="font-serif text-2xl leading-none">déjà</span>
           </Link>
           <nav className="hidden h-14 items-center justify-center gap-8 border-x border-line text-[13px] text-mute md:flex">
@@ -296,12 +296,12 @@ function VectorViz() {
           <circle key={r} cx="50" cy="50" r={r} fill="none" stroke="rgba(255,255,255,.08)" strokeDasharray="1 1.5" strokeWidth="0.4" />
         ))}
         {pts.filter((p) => p[3]).map(([x, y]) => (
-          <line key={`${x}${y}`} x1="50" y1="50" x2={x} y2={y} stroke="rgba(245,181,91,.5)" strokeWidth="0.4" />
+          <line key={`${x}${y}`} x1="50" y1="50" x2={x} y2={y} stroke="rgba(214,182,132,.5)" strokeWidth="0.4" />
         ))}
         {pts.map(([x, y, , near]) => (
-          <circle key={`p${x}${y}`} cx={x} cy={y} r={near ? 1.8 : 1.2} fill={near ? '#f2ede6' : 'rgba(242,237,230,.35)'} />
+          <circle key={`p${x}${y}`} cx={x} cy={y} r={near ? 1.8 : 1.2} fill={near ? '#f2ede6' : 'rgba(232,228,220,.35)'} />
         ))}
-        <rect x="47.5" y="47.5" width="5" height="5" fill="#f5b55b" />
+        <rect x="47.5" y="47.5" width="5" height="5" fill="#d6b684" />
       </svg>
       <span className="absolute left-1/2 top-[57%] -translate-x-1/2 whitespace-nowrap font-mono text-[9px] text-amber">
         “which database?”
@@ -331,7 +331,7 @@ function TableViz() {
       {rows.map(([c, st, r, n]) => (
         <div key={c} className="grid grid-cols-[1.6fr_1fr_0.6fr_0.5fr] border-b border-line px-3 py-2 last:border-b-0">
           <span className={`truncate ${st === 'superseded' ? 'text-faint line-through' : 'text-ink-2'}`}>{c}</span>
-          <span className={st === 'superseded' ? 'text-[#9fc2ff]' : 'text-mute'}>{st}</span>
+          <span className={st === 'superseded' ? 'text-[#96acd0]' : 'text-mute'}>{st}</span>
           <span className={Number(r) < 0.15 ? 'text-faint' : 'text-amber'}>{r}</span>
           <span className="text-mute">{n}</span>
         </div>

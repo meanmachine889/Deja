@@ -18,9 +18,13 @@ const LOOSE = { duplicate: 0.06, candidate: 0.6, update: 0.5, related: 0.3 };
 
 const cache = globalThis as unknown as { __deja?: Promise<Deja> };
 
+// Live: a module-level engine, so edits to @deja/core apply on hot reload. Offline: kept on
+// globalThis so the seeded in-memory brain survives reloads.
+let live: Promise<Deja> | undefined;
+
 export function getDeja(): Promise<Deja> {
+  if (!OFFLINE) return (live ??= Promise.resolve(createDeja(loadConfig())));
   cache.__deja ??= (async () => {
-    if (!OFFLINE) return createDeja(loadConfig());
     const store = new MemoryStore();
     const embedder = new HashEmbedder();
     await seedDemo({ store, embedder, ownerId: OFFLINE_OWNER });
@@ -38,16 +42,23 @@ export class HttpError extends Error {
   }
 }
 
+const verified = new Map<string, { ownerId: string; until: number }>();
+
 /** Resolve the acting user from `Authorization: Bearer <Appwrite JWT>`. */
 export async function ctxFrom(req: Request, project?: string | null): Promise<Ctx> {
   const base = { sessionId: 'dashboard', agent: 'dashboard', project: project || 'global' };
   if (OFFLINE) return { ...base, ownerId: OFFLINE_OWNER };
   const jwt = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!jwt) throw new HttpError(401, 'Sign in first');
+  const hit = verified.get(jwt);
+  if (hit && hit.until > Date.now()) return { ...base, ownerId: hit.ownerId };
   const config = loadConfig();
   const client = new Client().setEndpoint(config.endpoint).setProject(config.projectId).setJWT(jwt);
   try {
     const user = await new Account(client).get();
+    // JWTs live 15 minutes; re-verify at most once a minute instead of on every request.
+    verified.set(jwt, { ownerId: user.$id, until: Date.now() + 60_000 });
+    if (verified.size > 500) verified.clear();
     return { ...base, ownerId: user.$id };
   } catch {
     throw new HttpError(401, 'Session expired, sign in again');
