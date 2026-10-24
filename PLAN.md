@@ -234,7 +234,11 @@ Follow `~/design-inspiration/CATALOG.md`. Mood: **dark = premium/intelligent**.
 - Type: editorial serif headlines (Instrument Serif / Newsreader via Google Fonts) + Inter/Geist
   for UI + a mono for IDs/metrics. ONE accent: warm amber `#f5b55b` (a star's glow). Conflicts use a
   muted red only inside the graph.
-- Floating pill nav, pill buttons, 16–24px radii, hairline borders `rgba(255,255,255,.08)`.
+- **Yash's override (Oct 24): symmetric, grid-based, all squares.** The landing page is one centred
+  1200px column framed by hairlines, every block a square cell, `+` marks at rule intersections, sharp
+  corners on buttons/cards (stars stay round). Prefer this over the catalog's pills/rounded cards for
+  new marketing surfaces. The `/brain` app still uses rounded glass panels; square it up too if asked.
+- Hairline borders `rgba(255,255,255,.08)`.
 
 ### Pages
 1. **`/` landing** — badge "Built on Appwrite VectorsDB + TablesDB", huge serif headline
@@ -324,7 +328,7 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done. Keep IDs stable.
 - [x] D5 Memory drawer (provenance, curve sparkline, history chain)
 - [x] D6 Conflict inbox + resolve
 - [x] D7 Time-warp slider + Ask-your-brain
-- [ ] D8 Landing page `/`
+- [x] D8 Landing page `/` (symmetric hairline grid of square cells per Yash, sharp corners)
 
 ### E. Ship — Oct 29–31
 - [ ] E1 `scripts/seed-demo.ts` (demo story data)
@@ -346,4 +350,4 @@ Append one line per session: date · what got done · what's next / blockers.
 
 - 2026-10-24 · Plan written. Verified SDK APIs from `node-appwrite@31.0.0` type defs (VectorsDB `createCollection{dimension}`, `createIndex{type: HnswCosine}`, `Query.vectorCosine`, `Embeddings.createTextEmbeddings{texts, model}` with models `nomic-embed-text` / `all-minilm`; TablesDB `createTable{columns, indexes}`, `createRow/updateRow/listRows/incrementRowColumn`, transactions). Found Appwrite's "Recall" tutorial → differentiation table in §1.
 - 2026-10-24 · Built A1–A4, B1–B3, C1, D1–D3, D5–D7 (D4 code only). Core: 16 vitest tests green (decay, dedupe, supersede chain, conflicts+resolve, heuristic supersede, recall ranking/fading/isolation, demo seed). MCP: offline stdio e2e passes (`pnpm mcp:e2e`). Dashboard verified in browser on offline demo brain: constellation, Ask, drawer w/ forgetting curve + history, conflict inbox resolve, time-warp, mobile layout; `next build` passes. Thresholds are configurable (`Thresholds` in judge.ts) — **calibrate `duplicate`/`candidate` against real nomic-embed-text distances in C3**. Judge uses `claude-opus-5-5` effort low via `messages.parse`; on refusal/error it falls back to heuristics. **Next:** Yash provides §8 creds → `pnpm setup:appwrite` → C3 smoke (`scripts/smoke.ts` not written yet) → C2 → D8 landing → E1 seed script.
-
+- 2026-10-24 · D8 landing done (`apps/web/src/app/page.tsx` + `components/landing/*`): centred hero, hero sky canvas with supersede loop + Claude Code terminal vignette, 4 square stat cells, 2×2 square feature grid (1.0–1.3), why-two-databases squares + 4 Appwrite service squares, 3 install squares, wordmark footer. Verified desktop + mobile (no horizontal scroll). Copy says the dashboard "ships as a Next.js app on Appwrite Sites" — true only after E2. GitHub links point at `meanmachine889/deja` (not created yet).
