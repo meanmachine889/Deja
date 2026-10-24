@@ -57,6 +57,8 @@ export const TABLE_DEFS: TableDef[] = [
       { key: 'excerpt', type: 'text', required: false },
       { key: 'confidence', type: 'double', required: false, default: 1 },
       id36('ownerId'),
+      // Engine-clock creation time (differs from $createdAt when seeding history).
+      { key: 'storedAt', type: 'datetime', required: true },
     ],
     indexes: [
       { key: 'owner_project_status', type: 'key', attributes: ['ownerId', 'project', 'status'] },
@@ -91,8 +93,10 @@ export const TABLE_DEFS: TableDef[] = [
       { key: 'project', type: 'varchar', size: 64, required: true },
       { key: 'detail', type: 'text', required: false },
       id36('ownerId'),
+      { key: 'at', type: 'datetime', required: true },
     ],
     indexes: [
+      { key: 'owner_at', type: 'key', attributes: ['ownerId', 'at'] },
       { key: 'owner_project', type: 'key', attributes: ['ownerId', 'project'] },
       { key: 'memory', type: 'key', attributes: ['memoryId'] },
     ],

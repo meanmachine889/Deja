@@ -47,7 +47,7 @@ export class MemoryStore implements Store {
     return ids.flatMap((id) => this.memories.get(id) ?? []);
   }
   async insertMemory(memory: NewMemory) {
-    const row = { ...memory, createdAt: this.now().toISOString() };
+    const row = { ...memory };
     this.memories.set(row.id, row);
     return row;
   }
@@ -96,8 +96,9 @@ export class MemoryStore implements Store {
   }
 
   async insertEvent(event: NewEvent) {
-    const row = { ...event, id: randomUUID(), createdAt: this.now().toISOString() };
+    const row = { ...event, id: randomUUID() };
     this.events.push(row);
+    this.events.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
     return row;
   }
   async listEvents(ownerId: string, opts: { project?: string; types?: EventType[]; limit?: number } = {}) {

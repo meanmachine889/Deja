@@ -1,0 +1,142 @@
+@import 'tailwindcss';
+
+/* Déjà is a night sky: near-black void, off-white type, one warm amber accent (a star's glow). */
+@theme {
+  --color-void: #0b0b0d;
+  --color-void-2: #121215;
+  --color-ink: #f2ede6;
+  --color-ink-2: #c9c4bb;
+  --color-mute: #8a8780;
+  --color-faint: #5a5852;
+  --color-line: rgb(255 255 255 / 0.08);
+  --color-line-2: rgb(255 255 255 / 0.14);
+  --color-glass: rgb(20 20 24 / 0.72);
+  --color-amber: #f5b55b;
+  --color-amber-dim: rgb(245 181 91 / 0.16);
+  --color-conflict: #ff7a6b;
+
+  --color-k-fact: #f2ede6;
+  --color-k-preference: #f5b55b;
+  --color-k-decision: #9fc2ff;
+  --color-k-convention: #a8e2c0;
+  --color-k-person: #e7b3df;
+  --color-k-event: #b9b3a8;
+
+  --font-serif: var(--font-instrument), ui-serif, Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+
+  --radius-card: 20px;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body {
+  background: var(--color-void);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-amber-dim);
+  color: var(--color-ink);
+}
+
+/* Floating translucent surfaces used across the app. */
+@utility glass {
+  background: var(--color-glass);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border: 1px solid var(--color-line);
+}
+
+@utility dot-grid {
+  background-image: radial-gradient(rgb(255 255 255 / 0.06) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.8);
+  }
+}
+
+@keyframes slide-in {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(16px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+.animate-slide-in {
+  animation: slide-in 0.35s ease-out both;
+}
+.animate-drawer-in {
+  animation: drawer-in 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+input[type='range'].warp {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  height: 20px;
+}
+input[type='range'].warp::-webkit-slider-runnable-track {
+  height: 2px;
+  background: linear-gradient(to right, var(--color-amber) var(--fill, 0%), var(--color-line-2) var(--fill, 0%));
+  border-radius: 2px;
+}
+input[type='range'].warp::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 16px;
+  height: 16px;
+  margin-top: -7px;
+  border-radius: 999px;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 4px rgb(245 181 91 / 0.25), 0 0 18px rgb(245 181 91 / 0.6);
+  cursor: grab;
+}
+input[type='range'].warp::-moz-range-track {
+  height: 2px;
+  background: var(--color-line-2);
+}
+input[type='range'].warp::-moz-range-progress {
+  height: 2px;
+  background: var(--color-amber);
+}
+input[type='range'].warp::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--color-ink);
+  box-shadow: 0 0 0 4px rgb(245 181 91 / 0.25), 0 0 18px rgb(245 181 91 / 0.6);
+}

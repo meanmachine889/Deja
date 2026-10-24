@@ -23,3 +23,4 @@ export function createDeja(config: DejaConfig): Deja {
   });
 }
 export * from './schema.ts';
+export * from './demo.ts';

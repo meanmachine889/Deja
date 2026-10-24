@@ -144,13 +144,14 @@ Pinned SDKs: `node-appwrite@31.0.0`, `appwrite` (web) `@29.x`, `@modelcontextpro
 | excerpt | text nullable | raw source text it was extracted from |
 | confidence | float | judge confidence 0–1 |
 | ownerId | varchar(36) | Appwrite user id |
+| storedAt | datetime | engine-clock creation time (≠ `$createdAt` when seeding history); maps to `Memory.createdAt` |
 Indexes: key(ownerId, project, status), key(ownerId, status).
 
 **links** — the knowledge graph
 | fromId | toId | type enum: supersedes, contradicts, supports, related | reason text | ownerId | resolved boolean |
 
 **events** — append-only log; this is what the dashboard's Realtime subscription consumes
-| type enum: remembered, reinforced, recalled, superseded, conflict, resolved, forgotten, session | memoryId nullable | sessionId | agent | detail text (JSON) | ownerId |
+| type enum: remembered, reinforced, recalled, superseded, conflict, resolved, forgotten, session | memoryId nullable | sessionId | agent | project | detail text (JSON) | ownerId | at datetime (engine clock; maps to `MemoryEvent.createdAt`) |
 
 **sessions**
 | agent | project | lastSeenAt datetime | ownerId |
@@ -261,6 +262,15 @@ Libraries: `next`, `react`, `tailwindcss@4`, `d3-force`, `motion` (framer), `app
 
 ---
 
+## 6b. Offline mode (built)
+
+No Appwrite credentials? Everything still runs:
+- **Dashboard**: if `APPWRITE_API_KEY` is unset (or `DEJA_OFFLINE=1`), `apps/web` serves a seeded in-memory
+  brain (`packages/core/src/demo.ts` → `seedDemo`) and polls every 3s instead of Realtime. Auth is skipped.
+- **MCP**: `DEJA_OFFLINE=1 pnpm mcp` uses `MemoryStore` + `HashEmbedder` (not semantic; tests only).
+- `pnpm mcp:e2e` drives the MCP server over stdio offline; `pnpm mcp:e2e -- --live` hits Appwrite.
+- Dev server: `pnpm web` → http://localhost:3100/brain.
+
 ## 7. Demo video script (2:45 max) — build toward this
 
 1. 0:00 Hook (10s): "Your AI agent just told you to use Postgres. You migrated to MySQL three
@@ -291,29 +301,29 @@ Libraries: `next`, `react`, `tailwindcss@4`, `d3-force`, `motion` (framer), `app
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done. Keep IDs stable.
 
 ### A. Foundation — Oct 24
-- [ ] A1 Monorepo scaffold (pnpm workspace, tsconfig, .env.example, .gitignore, CLAUDE.md)
-- [ ] A2 `packages/core` config + Appwrite clients + schema definitions
-- [ ] A3 `scripts/setup.ts` idempotent provisioning (both DBs, tables, columns, indexes, collection, HNSW index)
-- [ ] A4 `decay.ts` + unit tests
+- [x] A1 Monorepo scaffold (pnpm workspace, tsconfig, .env.example, .gitignore, CLAUDE.md)
+- [x] A2 `packages/core` config + Appwrite clients + schema definitions
+- [~] A3 `scripts/setup.ts` (written, not yet run — run in C3) idempotent provisioning (both DBs, tables, columns, indexes, collection, HNSW index)
+- [x] A4 `decay.ts` + unit tests
 
 ### B. Engine — Oct 24–25
-- [ ] B1 `judge.ts`: extract + relation judge (Claude structured output) + heuristic fallback
-- [ ] B2 `engine.ts`: remember (dedupe/supersede/conflict), recall (scoring+reinforce), forget, why, conflicts, resolve, timeline, stats
-- [ ] B3 Engine tests with in-memory fake store (judge logic + scoring), no network
+- [x] B1 `judge.ts`: extract + relation judge (Claude structured output) + heuristic fallback
+- [x] B2 `engine.ts`: remember (dedupe/supersede/conflict), recall (scoring+reinforce), forget, why, conflicts, resolve, timeline, stats
+- [x] B3 Engine tests with in-memory fake store (judge logic + scoring), no network
 - [ ] C3 Live smoke test against Appwrite (verify metadata filter syntax, `$distance`, realtime channels) — **needs §8**
 
 ### C. MCP — Oct 25
-- [ ] C1 MCP stdio server with all §5 tools + `deja_bootstrap` prompt, session tracking
+- [x] C1 MCP stdio server with all §5 tools + `deja_bootstrap` prompt, session tracking
 - [ ] C2 Wire into Claude Code locally, run the demo story end-to-end
 
 ### D. Dashboard — Oct 26–28
-- [ ] D1 Next.js app scaffold, design tokens, fonts, Appwrite web client, auth pages
-- [ ] D2 `/api/*` route handlers (JWT-verified owner) for recall/forget/resolve/why/stats
-- [ ] D3 Constellation canvas (d3-force) with retention brightness + supersede/conflict threads
-- [ ] D4 Realtime: live feed + star ignite/flare animations
-- [ ] D5 Memory drawer (provenance, curve sparkline, history chain)
-- [ ] D6 Conflict inbox + resolve
-- [ ] D7 Time-warp slider + Ask-your-brain
+- [x] D1 Next.js app scaffold, design tokens, fonts, Appwrite web client, auth pages
+- [x] D2 `/api/*` route handlers (JWT-verified owner) for recall/forget/resolve/why/stats
+- [x] D3 Constellation canvas (d3-force) with retention brightness + supersede/conflict threads
+- [~] D4 Realtime (code done: `lib/browser.ts#subscribeEvents`; unverified until C3): live feed + star ignite/flare animations
+- [x] D5 Memory drawer (provenance, curve sparkline, history chain)
+- [x] D6 Conflict inbox + resolve
+- [x] D7 Time-warp slider + Ask-your-brain
 - [ ] D8 Landing page `/`
 
 ### E. Ship — Oct 29–31
@@ -335,3 +345,5 @@ Legend: `[ ]` todo · `[~]` in progress · `[x]` done. Keep IDs stable.
 Append one line per session: date · what got done · what's next / blockers.
 
 - 2026-10-24 · Plan written. Verified SDK APIs from `node-appwrite@31.0.0` type defs (VectorsDB `createCollection{dimension}`, `createIndex{type: HnswCosine}`, `Query.vectorCosine`, `Embeddings.createTextEmbeddings{texts, model}` with models `nomic-embed-text` / `all-minilm`; TablesDB `createTable{columns, indexes}`, `createRow/updateRow/listRows/incrementRowColumn`, transactions). Found Appwrite's "Recall" tutorial → differentiation table in §1.
+- 2026-10-24 · Built A1–A4, B1–B3, C1, D1–D3, D5–D7 (D4 code only). Core: 16 vitest tests green (decay, dedupe, supersede chain, conflicts+resolve, heuristic supersede, recall ranking/fading/isolation, demo seed). MCP: offline stdio e2e passes (`pnpm mcp:e2e`). Dashboard verified in browser on offline demo brain: constellation, Ask, drawer w/ forgetting curve + history, conflict inbox resolve, time-warp, mobile layout; `next build` passes. Thresholds are configurable (`Thresholds` in judge.ts) — **calibrate `duplicate`/`candidate` against real nomic-embed-text distances in C3**. Judge uses `claude-opus-5-5` effort low via `messages.parse`; on refusal/error it falls back to heuristics. **Next:** Yash provides §8 creds → `pnpm setup:appwrite` → C3 smoke (`scripts/smoke.ts` not written yet) → C2 → D8 landing → E1 seed script.
+

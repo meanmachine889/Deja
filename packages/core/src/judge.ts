@@ -66,7 +66,7 @@ export interface Thresholds {
 export const DEFAULT_THRESHOLDS: Thresholds = { duplicate: 0.06, candidate: 0.35, update: 0.3, related: 0.25 };
 
 export class HeuristicJudge implements Judge {
-  readonly name = 'heuristic';
+  readonly name: string = 'heuristic';
   constructor(private t: Thresholds = DEFAULT_THRESHOLDS) {}
 
   async extract(text: string, hintKind?: Kind): Promise<Atom[]> {

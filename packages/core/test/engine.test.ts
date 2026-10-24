@@ -146,3 +146,18 @@ describe('graph + stats', () => {
     expect(graph.links.map((l) => l.type)).toEqual(['supersedes']);
   });
 });
+
+describe('demo story', () => {
+  it('seeds a brain with supersedes, one open conflict, and reinforced memories', async () => {
+    const { seedDemo } = await import('../src/demo.ts');
+    const store = new MemoryStore(() => new Date());
+    await seedDemo({ store, embedder: new HashEmbedder(), ownerId: 'demo' });
+    const deja = new Deja({ store, embedder: new HashEmbedder(), judge: new HeuristicJudge(LOOSE) });
+    const c: Ctx = { ...ctx, ownerId: 'demo', project: 'acme-shop' };
+    const stats = await deja.stats(c);
+    expect(stats.superseded).toBe(2);
+    expect(stats.openConflicts).toBe(1);
+    const all = await store.listMemories('demo');
+    expect(all.find((m) => m.content.startsWith('The team uses pnpm'))!.recallCount).toBe(9);
+  });
+});

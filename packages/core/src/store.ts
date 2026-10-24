@@ -6,9 +6,9 @@ export interface VectorHit {
   distance: number;
 }
 
-export type NewMemory = Omit<Memory, 'createdAt'>;
+export type NewMemory = Memory;
 export type NewLink = Omit<Link, 'id' | 'createdAt'>;
-export type NewEvent = Omit<MemoryEvent, 'id' | 'createdAt'>;
+export type NewEvent = Omit<MemoryEvent, 'id'>;
 
 /**
  * Persistence boundary. AppwriteStore splits it across VectorsDB (vectors) and TablesDB (everything

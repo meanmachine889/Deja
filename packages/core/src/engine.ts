@@ -199,6 +199,7 @@ export class Deja {
         excerpt: atom.excerpt,
         confidence: 1,
         ownerId: ctx.ownerId,
+        createdAt: this.now().toISOString(),
       });
       await this.emit(ctx, 'remembered', id, { content: atom.content, kind: atom.kind });
       return memory;
@@ -279,6 +280,11 @@ export class Deja {
     const memory = await this.store.getMemory(id);
     if (!memory || memory.ownerId !== ctx.ownerId) throw new Error(`No memory with id ${id}`);
     return memory;
+  }
+
+  /** Count a direct use of a memory as a recall (strengthens it). */
+  async touch(ctx: Ctx, id: string, detail: Record<string, unknown> = {}): Promise<Memory> {
+    return this.reinforce(ctx, await this.owned(ctx, id), 'recalled', detail);
   }
 
   async forget(ctx: Ctx, id: string): Promise<Memory> {
@@ -410,6 +416,7 @@ export class Deja {
       project: ctx.project,
       detail,
       ownerId: ctx.ownerId,
+      createdAt: this.now().toISOString(),
     });
   }
 }

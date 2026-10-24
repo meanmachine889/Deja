@@ -30,7 +30,7 @@ function toMemory(r: Row): Memory {
     excerpt: r.excerpt ?? null,
     confidence: r.confidence ?? 1,
     ownerId: r.ownerId,
-    createdAt: r.$createdAt,
+    createdAt: r.storedAt ?? r.$createdAt,
   };
 }
 
@@ -63,12 +63,17 @@ function toEvent(r: Row): MemoryEvent {
     project: r.project,
     detail,
     ownerId: r.ownerId,
-    createdAt: r.$createdAt,
+    createdAt: r.at ?? r.$createdAt,
   };
 }
 
 function toSession(r: Row): Session {
   return { id: r.$id, agent: r.agent, project: r.project, lastSeenAt: r.lastSeenAt, ownerId: r.ownerId };
+}
+
+function withoutCreatedAt<T extends { createdAt: string }>(x: T): Omit<T, 'createdAt'> {
+  const { createdAt: _createdAt, ...rest } = x;
+  return rest;
 }
 
 function isNotFound(err: unknown): boolean {
@@ -145,24 +150,24 @@ export class AppwriteStore implements Store {
   }
 
   async insertMemory(memory: NewMemory) {
-    const { id, ...data } = memory;
+    const { id, createdAt, ...rest } = memory;
     const row = await this.tables.createRow({
       databaseId: TABLES_DB_ID,
       tableId: T.memories,
       rowId: id,
-      data,
+      data: { ...rest, storedAt: createdAt },
       permissions: ownerPerms(memory.ownerId),
     });
     return toMemory(row);
   }
 
   async updateMemory(id: string, patch: Partial<NewMemory>) {
-    const { id: _ignored, ...data } = patch;
+    const { id: _id, createdAt: _createdAt, ...data } = patch;
     return toMemory(await this.tables.updateRow({ databaseId: TABLES_DB_ID, tableId: T.memories, rowId: id, data }));
   }
 
   async listMemories(ownerId: string, opts: { project?: string; status?: Status; limit?: number } = {}) {
-    const queries = [Query.equal('ownerId', ownerId), Query.orderDesc('$createdAt'), Query.limit(opts.limit ?? 500)];
+    const queries = [Query.equal('ownerId', ownerId), Query.orderDesc('storedAt'), Query.limit(opts.limit ?? 500)];
     if (opts.project) queries.push(Query.equal('project', opts.project));
     if (opts.status) queries.push(Query.equal('status', opts.status));
     const res = await this.tables.listRows({ databaseId: TABLES_DB_ID, tableId: T.memories, queries });
@@ -213,14 +218,14 @@ export class AppwriteStore implements Store {
       databaseId: TABLES_DB_ID,
       tableId: T.events,
       rowId: ID.unique(),
-      data: { ...event, detail: JSON.stringify(event.detail) },
+      data: { ...withoutCreatedAt(event), at: event.createdAt, detail: JSON.stringify(event.detail) },
       permissions: ownerPerms(event.ownerId),
     });
     return toEvent(row);
   }
 
   async listEvents(ownerId: string, opts: { project?: string; types?: EventType[]; limit?: number } = {}) {
-    const queries = [Query.equal('ownerId', ownerId), Query.orderDesc('$createdAt'), Query.limit(opts.limit ?? 50)];
+    const queries = [Query.equal('ownerId', ownerId), Query.orderDesc('at'), Query.limit(opts.limit ?? 50)];
     if (opts.project) queries.push(Query.equal('project', opts.project));
     if (opts.types) queries.push(Query.equal('type', opts.types));
     const res = await this.tables.listRows({ databaseId: TABLES_DB_ID, tableId: T.events, queries });
