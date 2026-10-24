@@ -26,6 +26,17 @@ export function BrainApp() {
   const [fresh, setFresh] = useState<Set<string>>(new Set());
   const flares = useRef(new Map<string, number>());
   const seenEvents = useRef<Set<string> | null>(null);
+  // The top bar wraps to several rows on narrow screens; keep the sky below its last row (the pill
+  // cluster), ignoring the recall dropdown so opening results doesn't squash the sky.
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerH, setHeaderH] = useState(88);
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setHeaderH(el.getBoundingClientRect().bottom + 12));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const load = useCallback(async () => {
     try {
@@ -117,7 +128,7 @@ export function BrainApp() {
           flares={flares.current}
           hiddenKinds={hiddenKinds}
           onSelect={setSelected}
-          insets={{ top: 88, bottom: 76, left: 272, right: selected ? 380 : 304 }}
+          insets={{ top: headerH, bottom: 76, left: 272, right: selected ? 380 : 304 }}
         />
       )}
 
@@ -144,7 +155,7 @@ export function BrainApp() {
           {hits && <RecallResults hits={hits} onPick={setSelected} onClear={() => setHits(null)} />}
           {toast && <Toast text={toast} onDone={() => setToast(null)} />}
         </div>
-        <div className="glass pointer-events-auto flex items-center gap-1 rounded-full p-1">
+        <div ref={headerRef} className="glass pointer-events-auto flex items-center gap-1 rounded-full p-1">
           <select
             value={project}
             onChange={(e) => setProject(e.target.value)}
