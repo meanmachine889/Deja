@@ -32,6 +32,9 @@ export function BrainApp() {
   const [headerH, setHeaderH] = useState(88);
   // Render one drawer (rail or overlay), not both hidden by CSS: each instance fetches.
   const [wide, setWide] = useState(true);
+  // `?clean` hides the offline caption, for screenshots.
+  const [clean, setClean] = useState(false);
+  useEffect(() => setClean(new URLSearchParams(window.location.search).has('clean')), []);
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 768px)');
     const update = () => setWide(mq.matches);
@@ -244,7 +247,7 @@ export function BrainApp() {
       {error && (
         <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-conflict">{error}</div>
       )}
-      {data && OFFLINE && (
+      {data && OFFLINE && !clean && (
         <div className="pointer-events-none absolute bottom-16 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap font-mono md:block text-[10px] uppercase tracking-[0.14em] text-faint">
           offline demo brain · connect Appwrite for realtime
         </div>

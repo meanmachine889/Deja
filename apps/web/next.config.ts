@@ -9,6 +9,10 @@ if (existsSync(rootEnv)) process.loadEnvFile(rootEnv);
 const offline = process.env.DEJA_OFFLINE ?? (process.env.APPWRITE_API_KEY ? '0' : '1');
 
 const config: NextConfig = {
+  // A second instance (e.g. an offline demo next to the live one) needs its own build dir.
+  distDir: process.env.NEXT_DIST_DIR || '.next',
+  // Keep the dev badge out of screenshots and the demo recording.
+  devIndicators: false,
   transpilePackages: ['@deja/core'],
   serverExternalPackages: ['node-appwrite'],
   env: {
