@@ -63,7 +63,10 @@ export interface Thresholds {
   related: number;
 }
 
-export const DEFAULT_THRESHOLDS: Thresholds = { duplicate: 0.06, candidate: 0.35, update: 0.3, related: 0.25 };
+// Measured on nomic-embed-text (Oct 24): paraphrases 0.01–0.23, updates 0.24–0.26, contradictions ~0.2,
+// related 0.34–0.49, unrelated 0.48–0.65. Opposites can be very close ("prefers tabs over spaces" vs
+// "now prefers spaces instead of tabs" = 0.043), so only near-verbatim text skips the judge.
+export const DEFAULT_THRESHOLDS: Thresholds = { duplicate: 0.015, candidate: 0.4, update: 0.32, related: 0.3 };
 
 export class HeuristicJudge implements Judge {
   readonly name: string = 'heuristic';
@@ -76,13 +79,15 @@ export class HeuristicJudge implements Judge {
 
   async relate(incoming: string, candidates: Candidate[]): Promise<Verdict[]> {
     return candidates.map((c) => {
-      if (c.distance < this.t.duplicate) {
+      const changes = CHANGE_WORDS.test(incoming);
+      const flipsNegation = NEGATION.test(incoming) !== NEGATION.test(c.content);
+      if (c.distance < this.t.duplicate || (c.distance < this.t.duplicate * 4 && !changes && !flipsNegation)) {
         return { id: c.id, relation: 'same', reason: 'Near-identical wording.', confidence: 0.9 };
       }
-      if (c.distance < this.t.update && CHANGE_WORDS.test(incoming)) {
+      if (c.distance < this.t.update && changes) {
         return { id: c.id, relation: 'updates', reason: 'Newer statement signals a change.', confidence: 0.6 };
       }
-      if (c.distance < this.t.related && NEGATION.test(incoming) !== NEGATION.test(c.content)) {
+      if (c.distance < this.t.related && flipsNegation) {
         return { id: c.id, relation: 'contradicts', reason: 'One statement negates the other.', confidence: 0.5 };
       }
       if (c.distance < this.t.related) {
