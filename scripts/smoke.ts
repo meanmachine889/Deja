@@ -37,8 +37,20 @@ try {
   const why = await deja.why(ctx, b.outcomes[0]!.memory.id);
   check('why returns the replaced memory', why.replaced.some((m) => /Supabase/.test(m.content)));
 
+  const node = await deja.remember(ctx, { content: 'The team runs scripts with Node 20' });
+  const bun = await deja.remember(ctx, {
+    content: 'Bun is the runtime for everything these days',
+    replaces: [node.outcomes[0]!.memory.id],
+    reason: 'The team switched runtimes.',
+  });
+  check(
+    'agent-reported replaces supersedes without the judge',
+    bun.outcomes[0]?.superseded.some((s) => s.via === 'agent' && s.memory.id === node.outcomes[0]?.memory.id) === true,
+    bun.summary.split('\n').at(-1),
+  );
+
   const stats = await deja.stats(ctx);
-  check('stats', stats.active === 3 && stats.superseded === 1, JSON.stringify(stats));
+  check('stats', stats.active === 4 && stats.superseded === 2, JSON.stringify(stats));
 
   const events = await deja.timeline(ctx, { limit: 50 });
   check('events were logged for Realtime', events.length >= 8, `${events.length} events`);

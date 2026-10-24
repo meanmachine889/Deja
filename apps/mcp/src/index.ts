@@ -41,8 +41,11 @@ const server = new McpServer(
     instructions: `Déjà is your long-term memory across sessions for the user and this project.
 - At the start of a task, call recall with what you're about to work on.
 - Before assuming anything about the user's stack, preferences, conventions, or past decisions, call recall.
-- When the user tells you a durable fact, preference, decision or convention, or one changes, call remember.
-  Déjà detects when new information replaces old information and supersedes it automatically.
+- When the user tells you a durable fact, preference, decision or convention, call remember.
+- When something changed ("we moved to X", "actually I prefer Y now", "that's no longer true"): first recall
+  the old belief, then call remember with the new fact and pass the outdated memory ids in \`replaces\`.
+  You understand the conversation best, so your word is final for those ids. Déjà also checks for
+  changes you didn't name and supersedes them when it's confident.
 - If remember or recall reports a conflict, ask the user which is right, then call resolve_conflict.
 - Use why to explain to the user where a memory came from.`,
   },
@@ -101,18 +104,25 @@ server.registerTool(
     title: 'Remember',
     description:
       'Store durable knowledge: facts about the project, user preferences, decisions, conventions, people, notable events. ' +
-      'Pass natural language; long text is split into atomic memories. If it replaces something Déjà already knew ' +
-      '(e.g. a migration or changed preference) the old memory is superseded automatically.',
+      'Pass natural language; long text is split into atomic memories. If this makes something you recalled outdated ' +
+      '(a migration, a changed preference, a reversed decision), pass those memory ids in `replaces` so they are ' +
+      'superseded with history kept. Déjà also detects obvious changes on its own.',
     inputSchema: {
       content: z.string().min(3).describe('What to remember, in plain language. Self-contained; resolve "it"/"this".'),
       kind: z.enum(KINDS).optional().describe('Optional; inferred when omitted.'),
+      replaces: z
+        .array(z.string())
+        .max(10)
+        .optional()
+        .describe('Ids (from recall) of memories this new information makes outdated. Only ids you are sure about.'),
+      reason: z.string().max(200).optional().describe('One short sentence on what changed, e.g. "Team migrated off Supabase".'),
       project: projectArg,
     },
     annotations: { readOnlyHint: false, destructiveHint: false },
   },
-  async ({ content, kind, project }) => {
+  async ({ content, kind, replaces, reason, project }) => {
     try {
-      const res = await withCtx(project, (c) => deja.remember(c, { content, kind, project: c.project }));
+      const res = await withCtx(project, (c) => deja.remember(c, { content, kind, replaces, reason, project: c.project }));
       return text(res.summary);
     } catch (err) {
       return fail(err);
@@ -140,7 +150,9 @@ server.registerTool(
     try {
       const hits = await withCtx(project, (c) => deja.recall(c, { query, k, includeFaded, project: c.project }));
       if (hits.length === 0) return text(`No memories about "${query}" yet.`);
-      return text(hits.map(formatHit).join('\n'));
+      return text(
+        `${hits.map(formatHit).join('\n')}\n\nIf the user is telling you one of these changed, pass its id in remember's \`replaces\`.`,
+      );
     } catch (err) {
       return fail(err);
     }
@@ -165,7 +177,11 @@ server.registerTool(
         `Stored by ${w.memory.agent} in session ${w.memory.sessionId.slice(0, 8)} on ${new Date(w.memory.createdAt).toUTCString()}`,
       ];
       if (w.memory.excerpt) lines.push(`Original words: "${w.memory.excerpt}"`);
-      for (const m of w.replaced) lines.push(`Replaced: "${m.content}" (${ago(m.createdAt)})`);
+      const reasonFor = (oldId: string) => w.links.find((l) => l.link.type === 'supersedes' && l.link.toId === oldId)?.link.reason;
+      for (const m of w.replaced) {
+        const why = reasonFor(m.id);
+        lines.push(`Replaced: "${m.content}" (${ago(m.createdAt)})${why ? ` · ${why}` : ''}`);
+      }
       for (const m of w.replacedBy) lines.push(`Replaced by: "${m.content}" (${ago(m.createdAt)})`);
       for (const { link, other } of w.links.filter((l) => l.link.type !== 'supersedes')) {
         lines.push(`${link.type}${link.resolved ? '' : ' (open)'}: "${other.content}" — ${link.reason}`);

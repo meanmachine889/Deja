@@ -161,3 +161,66 @@ describe('demo story', () => {
     expect(all.find((m) => m.content.startsWith('The team uses pnpm'))!.recallCount).toBe(9);
   });
 });
+
+describe('agent-reported supersedes (replaces)', () => {
+  it('supersedes what the agent names even when the judge sees no link', async () => {
+    const { deja } = setup();
+    const old = await deja.remember(ctx, { content: 'The team runs scripts with Node 20' });
+    // No change words and little lexical overlap: the heuristic judge alone would not connect these.
+    const res = await deja.remember(ctx, {
+      content: 'Bun is the runtime for everything these days',
+      replaces: [old.outcomes[0]!.memory.id],
+      reason: 'The team switched runtimes.',
+    });
+    const o = res.outcomes[0]!;
+    expect(o.action).toBe('created');
+    expect(o.superseded).toHaveLength(1);
+    expect(o.superseded[0]).toMatchObject({ via: 'agent', reason: 'The team switched runtimes.' });
+    expect(res.summary).toContain('replaced as test-agent reported');
+    const why = await deja.why(ctx, o.memory.id);
+    expect(why.replaced.map((m) => m.content)).toEqual(['The team runs scripts with Node 20']);
+  });
+
+  it('does not let the replaced memory count as a duplicate of the new one', async () => {
+    const { deja, store } = setup();
+    const old = await deja.remember(ctx, { content: 'Yash prefers tabs over spaces' });
+    // Near-identical vectors, opposite meaning. The agent knows better than the distance.
+    const res = await deja.remember(ctx, { content: 'Yash prefers spaces over tabs', replaces: [old.outcomes[0]!.memory.id] });
+    expect(res.outcomes[0]!.action).toBe('created');
+    expect((await store.getMemory(old.outcomes[0]!.memory.id))!.status).toBe('superseded');
+  });
+
+  it('reports ids it cannot replace instead of failing', async () => {
+    const { deja } = setup();
+    const theirs = await deja.remember({ ...ctx, ownerId: 'someone-else' }, { content: 'Their private fact' });
+    const mine = await deja.remember(ctx, { content: 'Deploys go out on Tuesdays' });
+    await deja.forget(ctx, mine.outcomes[0]!.memory.id);
+    const res = await deja.remember(ctx, {
+      content: 'Deploys go out on Thursdays now',
+      replaces: ['does-not-exist', theirs.outcomes[0]!.memory.id, mine.outcomes[0]!.memory.id],
+    });
+    expect(res.outcomes[0]!.superseded).toHaveLength(0);
+    expect(res.skipped.map((s) => s.why)).toEqual(['no such memory', 'no such memory', 'already forgotten']);
+    expect(res.summary).toContain("Couldn't replace memory does-not-exist");
+  });
+
+  it('supersedes onto the existing memory when the new content is already known', async () => {
+    const { deja, store } = setup();
+    const a = await deja.remember(ctx, { content: 'Staging lives on Fly.io' });
+    const b = await deja.remember(ctx, { content: 'Staging runs on Appwrite Sites', kind: 'fact' });
+    const res = await deja.remember(ctx, { content: 'Staging runs on Appwrite Sites', replaces: [a.outcomes[0]!.memory.id] });
+    expect(res.outcomes[0]!.action).toBe('reinforced');
+    expect(res.outcomes[0]!.memory.id).toBe(b.outcomes[0]!.memory.id);
+    expect((await store.getMemory(a.outcomes[0]!.memory.id))!.supersededBy).toBe(b.outcomes[0]!.memory.id);
+  });
+
+  it('never double-supersedes when the judge also infers the update', async () => {
+    const old = 'The app database is Postgres';
+    const { deja, store } = setup(new ScriptedJudge({ [old]: 'updates' }));
+    const first = await deja.remember(ctx, { content: old });
+    const res = await deja.remember(ctx, { content: 'The app database moved from Postgres to MySQL', replaces: [first.outcomes[0]!.memory.id] });
+    expect(res.outcomes[0]!.superseded).toHaveLength(1);
+    const links = await store.listLinks('u1', { type: 'supersedes' });
+    expect(links).toHaveLength(1);
+  });
+});

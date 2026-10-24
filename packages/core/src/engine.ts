@@ -17,14 +17,32 @@ export interface DejaDeps {
 export interface RememberOutcome {
   memory: Memory;
   action: 'created' | 'reinforced';
-  superseded: { memory: Memory; reason: string }[];
+  /** `agent`: the caller said so via `replaces`. `judge`: Déjà inferred it. */
+  superseded: { memory: Memory; reason: string; via: 'agent' | 'judge' }[];
   conflicts: { link: Link; other: Memory }[];
   supports: Memory[];
 }
 
 export interface RememberResult {
   outcomes: RememberOutcome[];
+  /** `replaces` ids that couldn't be applied (unknown, not yours, or already inactive). */
+  skipped: { id: string; why: string }[];
   summary: string;
+}
+
+export interface RememberInput {
+  content: string;
+  project?: string;
+  kind?: Kind;
+  excerpt?: string;
+  /**
+   * Ids of memories the caller knows this new information makes outdated, usually ones it just
+   * recalled. They're superseded directly, without asking the judge. This lets the agent's own
+   * understanding drive revisions; the judge still checks everything else.
+   */
+  replaces?: string[];
+  /** Why the replaced memories are outdated, shown in history. */
+  reason?: string;
 }
 
 export interface RecallHit {
@@ -85,71 +103,113 @@ export class Deja {
 
   // ---------------------------------------------------------------- remember
 
-  async remember(
-    ctx: Ctx,
-    input: { content: string; project?: string; kind?: Kind; excerpt?: string },
-  ): Promise<RememberResult> {
+  async remember(ctx: Ctx, input: RememberInput): Promise<RememberResult> {
     const project = input.project ?? ctx.project;
+    const { replaced, skipped } = await this.resolveReplaces(ctx, input.replaces ?? []);
     const atoms = await this.judge.extract(input.content, input.kind);
-    if (atoms.length === 0) return { outcomes: [], summary: 'Nothing durable to remember.' };
+    if (atoms.length === 0) return { outcomes: [], skipped, summary: 'Nothing durable to remember.' };
 
     const vectors = await this.embedder.embed(atoms.map((a) => a.content));
+    const forcedByAtom = await this.assignReplaced(atoms.map((a) => a.content), vectors, replaced);
+    const reason = input.reason?.trim() || `${ctx.agent} reported this replaces it.`;
+
     const outcomes: RememberOutcome[] = [];
     for (const [i, atom] of atoms.entries()) {
       outcomes.push(
-        await this.rememberAtom(ctx, {
-          ...atom,
-          project,
-          vector: vectors[i]!,
-          excerpt: input.excerpt ?? (atoms.length > 1 || atom.content !== input.content ? input.content : null),
-        }),
+        await this.rememberAtom(
+          ctx,
+          {
+            ...atom,
+            project,
+            vector: vectors[i]!,
+            excerpt: input.excerpt ?? (atoms.length > 1 || atom.content !== input.content ? input.content : null),
+          },
+          { memories: forcedByAtom[i] ?? [], reason },
+        ),
       );
     }
-    return { outcomes, summary: summarize(outcomes) };
+    return { outcomes, skipped, summary: summarize(outcomes, skipped, ctx.agent) };
+  }
+
+  /** Validate `replaces` ids: they must exist, belong to the caller, and still be active. */
+  private async resolveReplaces(ctx: Ctx, ids: string[]) {
+    const unique = [...new Set(ids.map((id) => id.trim()).filter(Boolean))];
+    const found = new Map((await this.store.getMemories(unique)).map((m) => [m.id, m]));
+    const replaced: Memory[] = [];
+    const skipped: { id: string; why: string }[] = [];
+    for (const id of unique) {
+      const m = found.get(id);
+      if (!m || m.ownerId !== ctx.ownerId) skipped.push({ id, why: 'no such memory' });
+      else if (m.status !== 'active') skipped.push({ id, why: `already ${m.status}` });
+      else replaced.push(m);
+    }
+    return { replaced, skipped };
+  }
+
+  /** With several atoms, each replaced memory goes to the atom it's semantically closest to. */
+  private async assignReplaced(contents: string[], vectors: number[][], replaced: Memory[]): Promise<Memory[][]> {
+    const byAtom: Memory[][] = contents.map(() => []);
+    if (replaced.length === 0) return byAtom;
+    if (contents.length === 1) {
+      byAtom[0] = replaced;
+      return byAtom;
+    }
+    const oldVectors = await this.embedder.embed(replaced.map((m) => m.content));
+    replaced.forEach((m, j) => {
+      let best = 0;
+      let bestD = Infinity;
+      vectors.forEach((v, i) => {
+        const d = cosine(oldVectors[j]!, v);
+        if (d < bestD) [best, bestD] = [i, d];
+      });
+      byAtom[best]!.push(m);
+    });
+    return byAtom;
   }
 
   private async rememberAtom(
     ctx: Ctx,
     atom: { content: string; kind: Kind; project: string; vector: number[]; excerpt: string | null },
+    forced: { memories: Memory[]; reason: string },
   ): Promise<RememberOutcome> {
-    const candidates = await this.neighbours(ctx.ownerId, atom.vector, atom.project);
-    const close = candidates.filter((c) => c.distance < this.t.candidate);
+    const forcedIds = new Set(forced.memories.map((m) => m.id));
+    // Memories the caller already declared outdated are not candidates for "same" or the judge.
+    const close = (await this.neighbours(ctx.ownerId, atom.vector, atom.project)).filter(
+      (c) => c.distance < this.t.candidate && !forcedIds.has(c.memory.id),
+    );
 
+    let outcome: RememberOutcome;
+    let verdicts: Verdict[] = [];
     const best = close[0];
     if (best && best.distance < this.t.duplicate) {
-      return this.reinforcedOutcome(ctx, best.memory, 'reinforced', { content: atom.content });
+      outcome = await this.reinforcedOutcome(ctx, best.memory, 'reinforced', { content: atom.content });
+    } else {
+      verdicts = await this.judge.relate(
+        atom.content,
+        close.map<Candidate>((c) => ({ id: c.memory.id, content: c.memory.content, createdAt: c.memory.createdAt, distance: c.distance })),
+      );
+      const same = verdicts.find((v) => v.relation === 'same');
+      const sameMemory = same && close.find((c) => c.memory.id === same.id)?.memory;
+      outcome = sameMemory
+        ? await this.reinforcedOutcome(ctx, sameMemory, 'reinforced', { content: atom.content })
+        : { memory: await this.insert(ctx, atom), action: 'created', superseded: [], conflicts: [], supports: [] };
     }
+    const memory = outcome.memory;
 
-    const verdicts: Verdict[] = await this.judge.relate(
-      atom.content,
-      close.map<Candidate>((c) => ({
-        id: c.memory.id,
-        content: c.memory.content,
-        createdAt: c.memory.createdAt,
-        distance: c.distance,
-      })),
-    );
+    // The caller's word first, then the judge's inferences for everything else.
+    for (const old of forced.memories) {
+      if (old.id === memory.id) continue;
+      outcome.superseded.push(await this.supersede(ctx, old, memory, forced.reason, 'agent'));
+    }
+    if (outcome.action === 'reinforced') return outcome;
+
     const byRelation = (r: Verdict['relation']) =>
-      verdicts.filter((v) => v.relation === r).map((v) => ({ v, memory: close.find((c) => c.memory.id === v.id)!.memory }));
-
-    const same = byRelation('same')[0];
-    if (same) return this.reinforcedOutcome(ctx, same.memory, 'reinforced', { content: atom.content });
-
-    const memory = await this.insert(ctx, atom);
-    const outcome: RememberOutcome = { memory, action: 'created', superseded: [], conflicts: [], supports: [] };
-
-    for (const { v, memory: old } of byRelation('updates')) {
-      await this.store.updateMemory(old.id, { status: 'superseded', supersededBy: memory.id });
-      await this.store.insertLink({
-        fromId: memory.id,
-        toId: old.id,
-        type: 'supersedes',
-        reason: v.reason,
-        ownerId: ctx.ownerId,
-        resolved: true,
+      verdicts.flatMap((v) => {
+        const m = v.relation === r ? close.find((c) => c.memory.id === v.id)?.memory : undefined;
+        return m ? [{ v, memory: m }] : [];
       });
-      await this.emit(ctx, 'superseded', old.id, { by: memory.id, from: old.content, to: memory.content, reason: v.reason });
-      outcome.superseded.push({ memory: { ...old, status: 'superseded', supersededBy: memory.id }, reason: v.reason });
+    for (const { v, memory: old } of byRelation('updates')) {
+      outcome.superseded.push(await this.supersede(ctx, old, memory, v.reason, 'judge'));
     }
     for (const { v, memory: other } of byRelation('contradicts')) {
       const link = await this.store.insertLink({
@@ -163,18 +223,23 @@ export class Deja {
       await this.emit(ctx, 'conflict', memory.id, { linkId: link.id, a: memory.content, b: other.content, reason: v.reason });
       outcome.conflicts.push({ link, other });
     }
-    for (const { v, memory: other } of byRelation('supports')) {
-      await this.store.insertLink({
-        fromId: memory.id,
-        toId: other.id,
-        type: 'supports',
-        reason: v.reason,
-        ownerId: ctx.ownerId,
-        resolved: true,
-      });
-      outcome.supports.push(other);
-    }
+    await Promise.all(
+      byRelation('supports').map(({ v, memory: other }) => {
+        outcome.supports.push(other);
+        return this.store.insertLink({ fromId: memory.id, toId: other.id, type: 'supports', reason: v.reason, ownerId: ctx.ownerId, resolved: true });
+      }),
+    );
     return outcome;
+  }
+
+  /** Mark `old` as replaced by `by`, keeping the history as a `supersedes` link. */
+  private async supersede(ctx: Ctx, old: Memory, by: Memory, reason: string, via: 'agent' | 'judge') {
+    await Promise.all([
+      this.store.updateMemory(old.id, { status: 'superseded', supersededBy: by.id }),
+      this.store.insertLink({ fromId: by.id, toId: old.id, type: 'supersedes', reason, ownerId: ctx.ownerId, resolved: true }),
+      this.emit(ctx, 'superseded', old.id, { by: by.id, from: old.content, to: by.content, reason, via }),
+    ]);
+    return { memory: { ...old, status: 'superseded' as const, supersededBy: by.id }, reason, via };
   }
 
   private async insert(
@@ -421,7 +486,19 @@ export class Deja {
   }
 }
 
-function summarize(outcomes: RememberOutcome[]): string {
+function cosine(a: number[], b: number[]): number {
+  let dot = 0;
+  let na = 0;
+  let nb = 0;
+  for (let i = 0; i < a.length; i++) {
+    dot += a[i]! * (b[i] ?? 0);
+    na += a[i]! * a[i]!;
+    nb += (b[i] ?? 0) * (b[i] ?? 0);
+  }
+  return na && nb ? 1 - dot / Math.sqrt(na * nb) : 1;
+}
+
+function summarize(outcomes: RememberOutcome[], skipped: { id: string; why: string }[], agent: string): string {
   const created = outcomes.filter((o) => o.action === 'created');
   const reinforced = outcomes.filter((o) => o.action === 'reinforced');
   const lines: string[] = [];
@@ -429,12 +506,16 @@ function summarize(outcomes: RememberOutcome[]): string {
   for (const o of created) lines.push(`  + ${quote(o.memory.content)} [${o.memory.kind}] (id ${o.memory.id})`);
   for (const o of reinforced) lines.push(`Already knew ${quote(o.memory.content)}, strengthened it.`);
   for (const o of outcomes) {
-    for (const s of o.superseded) lines.push(`Superseded ${quote(s.memory.content)} → ${quote(o.memory.content)} (${s.reason})`);
+    for (const s of o.superseded) {
+      const by = s.via === 'agent' ? `replaced as ${agent} reported` : 'Déjà detected a change';
+      lines.push(`Superseded ${quote(s.memory.content)} → ${quote(o.memory.content)} (${by}: ${s.reason})`);
+    }
     for (const c of o.conflicts) {
       lines.push(
         `⚠ Conflict: ${quote(o.memory.content)} vs ${quote(c.other.content)}. Ask the user which is right, then call resolve_conflict with linkId ${c.link.id}.`,
       );
     }
   }
+  for (const s of skipped) lines.push(`Couldn't replace memory ${s.id}: ${s.why}.`);
   return lines.join('\n');
 }
