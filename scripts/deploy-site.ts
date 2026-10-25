@@ -79,20 +79,23 @@ try {
   console.log(`Created site ${SITE_ID}`);
 }
 
+// A Qdrant on this machine is unreachable from Appwrite's servers: the site then searches with the
+// `tables` backend (TablesDB + Appwrite Embeddings, no extra service).
+const localQdrant = config.vectorBackend === 'qdrant' && /localhost|127\.0\.0\.1/.test(config.qdrantUrl);
+const backend = localQdrant ? 'tables' : config.vectorBackend;
+if (localQdrant) console.log('Qdrant is local, so the site will use the tables vector backend');
+
 // Server-side config for the API routes; NEXT_PUBLIC_* are derived from these at build time.
 const vars: Record<string, { value: string | undefined; secret: boolean }> = {
   APPWRITE_ENDPOINT: { value: config.endpoint, secret: false },
   APPWRITE_PROJECT_ID: { value: config.projectId, secret: false },
   APPWRITE_API_KEY: { value: config.apiKey, secret: true },
   DEJA_OFFLINE: { value: '0', secret: false },
-  DEJA_VECTOR_BACKEND: { value: config.vectorBackend, secret: false },
-  QDRANT_URL: { value: config.qdrantUrl, secret: false },
-  QDRANT_API_KEY: { value: config.qdrantApiKey, secret: true },
+  DEJA_VECTOR_BACKEND: { value: backend, secret: false },
+  QDRANT_URL: { value: backend === 'qdrant' ? config.qdrantUrl : undefined, secret: false },
+  QDRANT_API_KEY: { value: backend === 'qdrant' ? config.qdrantApiKey : undefined, secret: true },
   DEJA_TIME_WARP: { value: String(config.timeWarp), secret: false },
 };
-if (config.vectorBackend === 'qdrant' && /localhost|127\.0\.0\.1/.test(config.qdrantUrl)) {
-  throw new Error('QDRANT_URL points at localhost; the deployed site needs a hosted index (e.g. Qdrant Cloud).');
-}
 const existing = (await sites.listVariables({ siteId: SITE_ID, queries: [Query.limit(100)] })).variables;
 for (const [key, { value, secret }] of Object.entries(vars)) {
   if (value === undefined) continue;

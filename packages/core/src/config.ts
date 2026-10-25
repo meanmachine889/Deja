@@ -10,7 +10,7 @@ const Env = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   DEJA_MODEL: z.string().default('claude-opus-5-5'),
   DEJA_TIME_WARP: z.coerce.number().positive().default(1),
-  DEJA_VECTOR_BACKEND: z.enum(['qdrant', 'appwrite']).default('qdrant'),
+  DEJA_VECTOR_BACKEND: z.enum(['qdrant', 'appwrite', 'tables']).default('qdrant'),
   QDRANT_URL: z.string().url().default('http://localhost:6333'),
   QDRANT_API_KEY: z.string().optional(),
 });
@@ -24,8 +24,11 @@ export interface DejaConfig {
   anthropicKey: string | undefined;
   model: string;
   timeWarp: number;
-  /** `qdrant` (local Docker, works on Appwrite Free) or `appwrite` (VectorsDB, needs a paid plan). */
-  vectorBackend: 'qdrant' | 'appwrite';
+  /**
+   * `qdrant` (Docker or Qdrant Cloud), `appwrite` (VectorsDB, needs a paid plan), or `tables`
+   * (no extra service: exact search over TablesDB rows with cached Appwrite embeddings).
+   */
+  vectorBackend: 'qdrant' | 'appwrite' | 'tables';
   qdrantUrl: string;
   qdrantApiKey: string | undefined;
 }

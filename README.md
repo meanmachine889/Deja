@@ -91,8 +91,9 @@ Also used: **Appwrite Embeddings** (`nomic-embed-text`, 768-d), **Realtime** (li
 
 **Vector index.** Embeddings live in **Qdrant** (local Docker) because Appwrite's Free plan allows one
 database per project and has no VectorsDB pool. The index sits behind a small `VectorIndex` interface,
-and `DEJA_VECTOR_BACKEND=appwrite` switches to **Appwrite VectorsDB** on a paid plan; `scripts/setup.ts`
-provisions either one.
+`DEJA_VECTOR_BACKEND=appwrite` switches to **Appwrite VectorsDB** on a paid plan, and
+`DEJA_VECTOR_BACKEND=tables` needs no extra service at all: exact search over TablesDB rows with cached
+Appwrite embeddings. The hosted dashboard uses that one, so it runs on Appwrite alone.
 
 ## MCP tools
 
