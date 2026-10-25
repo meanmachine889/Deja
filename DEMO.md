@@ -17,7 +17,7 @@ claude mcp add deja -s local -- pnpm -s --dir /Users/yashbharadwaj/deja mcp
 
 ## Before you record
 
-1. Qdrant is running: `docker compose up -d` (in `~/deja`).
+1. Nothing to start for search: `DEJA_VECTOR_BACKEND=tables` (default) runs on Appwrite alone.
 2. Fresh demo brain: `pnpm seed:demo --reset` (in `~/deja`, ~2 min). Wipes the `acme-shop` project and
    anything seeded as demo data (including what earlier demo runs added), then reseeds. Other projects are untouched.
 3. Dashboard: `pnpm web`, open http://localhost:3100/brain, signed in. Window ≥ 1280px wide so the
@@ -92,7 +92,7 @@ Quit with `/exit`.
 
 - `/mcp` shows deja failed: run `pnpm -s --dir ~/deja mcp` in a terminal. It should print
   `[deja] MCP server ready · project …` on stderr and then wait. Errors there name the missing env var
-  or an unreachable Qdrant.
+  or an unreachable vector backend.
 - Dashboard doesn't update live: it only updates through Appwrite Realtime. Reload the page once;
   check you're signed in as the owner in `.env` (`DEJA_OWNER_ID`).
 - Memories land in the wrong project: Déjà names the project after the folder Claude Code runs in.

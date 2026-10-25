@@ -10,7 +10,7 @@ const Env = z.object({
   ANTHROPIC_API_KEY: z.string().optional(),
   DEJA_MODEL: z.string().default('claude-opus-5-5'),
   DEJA_TIME_WARP: z.coerce.number().positive().default(1),
-  DEJA_VECTOR_BACKEND: z.enum(['qdrant', 'appwrite', 'tables']).default('qdrant'),
+  DEJA_VECTOR_BACKEND: z.enum(['qdrant', 'appwrite', 'tables']).default('tables'),
   QDRANT_URL: z.string().url().default('http://localhost:6333'),
   QDRANT_API_KEY: z.string().optional(),
 });

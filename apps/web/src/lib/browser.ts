@@ -29,7 +29,7 @@ export function clearJwt() {
 
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
-  if (!OFFLINE) headers.authorization = `Bearer ${await getJwt()}`;
+  if (!OFFLINE) headers['x-deja-jwt'] = await getJwt();
   const res = await fetch(path, {
     method: init.method ?? (init.body ? 'POST' : 'GET'),
     headers,

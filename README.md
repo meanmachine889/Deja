@@ -8,6 +8,8 @@ noise on a forgetting curve, and can always **explain** where a memory came from
 
 Built on **Appwrite TablesDB** for the [Appwrite Databases Hackathon](https://hackathon.appwrite.io) (Oct 2026).
 
+**Live:** https://deja.appwrite.network (hosted on Appwrite Sites)
+
 ![The Déjà dashboard: memories as a star chart, with stats, kinds and a live event feed](docs/brain.png)
 
 ## The problem
@@ -53,7 +55,7 @@ flowchart LR
   M --> E[packages/core engine]
   E -- state, graph, events, sessions --> T[(Appwrite TablesDB)]
   E -- text → 768-d vectors --> X[Appwrite Embeddings]
-  E -- similarity search --> Q[(Vector index: Qdrant)]
+  E -- similarity search --> Q[(Vector index: TablesDB rows · or Qdrant / VectorsDB)]
   T -- Realtime row events --> D[Dashboard · Next.js]
   D -- Appwrite Auth + API routes --> E
 ```
@@ -89,11 +91,15 @@ permissions so each user's brain is private:
 Also used: **Appwrite Embeddings** (`nomic-embed-text`, 768-d), **Realtime** (live dashboard),
 **Auth** (dashboard sign-in, JWT-verified API routes).
 
-**Vector index.** Embeddings live in **Qdrant** (local Docker) because Appwrite's Free plan allows one
-database per project and has no VectorsDB pool. The index sits behind a small `VectorIndex` interface,
-`DEJA_VECTOR_BACKEND=appwrite` switches to **Appwrite VectorsDB** on a paid plan, and
-`DEJA_VECTOR_BACKEND=tables` needs no extra service at all: exact search over TablesDB rows with cached
-Appwrite embeddings. The hosted dashboard uses that one, so it runs on Appwrite alone.
+**Vector search.** Appwrite's Free plan allows one database per project and has no VectorsDB pool, so
+search sits behind a small `VectorIndex` interface with three backends (`DEJA_VECTOR_BACKEND`):
+
+- `tables` (default): exact cosine search over the user's TablesDB rows, with Appwrite embeddings cached
+  per process. No extra service, and always in sync because it reads the source of truth. Fine for
+  brains of a few hundred memories; the hosted dashboard and the MCP server both use it.
+- `qdrant`: HNSW search in [Qdrant](https://qdrant.tech) (`docker compose up -d`, or Qdrant Cloud) for
+  bigger brains. `pnpm reindex` rebuilds it from TablesDB.
+- `appwrite`: Appwrite **VectorsDB** with an HNSW cosine index, on a paid Appwrite plan.
 
 ## MCP tools
 
@@ -112,14 +118,13 @@ facts, and pass `replaces` when the user says something changed.
 
 ## Quick start
 
-Requirements: Node 22+, pnpm, Docker, an Appwrite Cloud project.
+Requirements: Node 22+, pnpm, an Appwrite Cloud project.
 
 ```bash
 git clone https://github.com/meanmachine889/Deja.git deja && cd deja
 pnpm install
 cp .env.example .env          # Appwrite endpoint, project id, server API key
-docker compose up -d          # Qdrant on :6333
-pnpm setup:appwrite           # TablesDB database, tables, indexes + vector collection
+pnpm setup:appwrite           # TablesDB database, tables and indexes
 pnpm web                      # dashboard on http://localhost:3100
 ```
 
@@ -152,7 +157,7 @@ No Appwrite project yet? `pnpm web` without an API key serves a seeded **offline
 ## Repository layout
 
 ```
-packages/core   memory engine: decay math, judge, engine, Appwrite + Qdrant stores, demo story
+packages/core   memory engine: decay math, judge, engine, TablesDB store, vector backends, demo story
 apps/mcp        MCP stdio server
 apps/web        Next.js dashboard + landing page
 scripts/        setup, smoke test, seed, checks
@@ -167,7 +172,7 @@ libraries used:
 
 - **Appwrite**: `node-appwrite` (server SDK), `appwrite` (web SDK)
 - **MCP**: `@modelcontextprotocol/sdk`
-- **Vector search**: [Qdrant](https://qdrant.tech) (Docker image, REST API)
+- **Vector search (optional backend)**: [Qdrant](https://qdrant.tech) (Docker image, REST API)
 - **Web**: Next.js, React, Tailwind CSS, `d3-force` (star-chart layout), `lucide-react` (icons)
 - **Validation**: `zod`
 - **Optional judge**: `@anthropic-ai/sdk`

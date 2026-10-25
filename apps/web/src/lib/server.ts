@@ -44,11 +44,12 @@ export class HttpError extends Error {
 
 const verified = new Map<string, { ownerId: string; until: number }>();
 
-/** Resolve the acting user from `Authorization: Bearer <Appwrite JWT>`. */
+/** Resolve the acting user from the `X-Deja-JWT` header (an Appwrite account JWT). */
 export async function ctxFrom(req: Request, project?: string | null): Promise<Ctx> {
   const base = { sessionId: 'dashboard', agent: 'dashboard', project: project || 'global' };
   if (OFFLINE) return { ...base, ownerId: OFFLINE_OWNER };
-  const jwt = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
+  // Appwrite Sites' proxy sets its own Authorization header, so the user's JWT travels in X-Deja-JWT.
+  const jwt = req.headers.get('x-deja-jwt') ?? req.headers.get('authorization')?.replace(/^Bearer\s+/i, '');
   if (!jwt) throw new HttpError(401, 'Sign in first');
   const hit = verified.get(jwt);
   if (hit && hit.until > Date.now()) return { ...base, ownerId: hit.ownerId };

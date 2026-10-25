@@ -57,7 +57,7 @@ const SERVICES = [
 ];
 
 const STEPS = [
-  { n: '01', title: 'Provision', body: 'Starts Qdrant, then creates the TablesDB database, tables, indexes and the vector collection.', cmd: 'docker compose up -d && pnpm setup:appwrite' },
+  { n: '01', title: 'Provision', body: 'Creates the TablesDB database, tables and indexes. Search runs on Appwrite too: no extra service.', cmd: 'pnpm setup:appwrite' },
   { n: '02', title: 'Connect your agent', body: 'Any MCP client works. This adds Déjà to Claude Code.', cmd: 'claude mcp add deja -- pnpm -s --dir ~/deja mcp' },
   { n: '03', title: 'Open the brain', body: 'Sign in and watch memories form while your agent works.', cmd: 'pnpm web' },
 ];
@@ -185,9 +185,9 @@ export default function Landing() {
               <TableViz />
             </DbCell>
             <DbCell
-              label="Vector index · Qdrant"
+              label="Vector search"
               question="What is this about?"
-              body="Appwrite Embeddings turns each memory into a 768-d vector, indexed with HNSW cosine. One env var swaps the index to Appwrite VectorsDB."
+              body="Appwrite Embeddings turns each memory into a 768-d vector, ranked by cosine similarity over your TablesDB rows. One env var swaps in Qdrant or Appwrite VectorsDB for HNSW at scale."
             >
               <VectorViz />
             </DbCell>

@@ -20,8 +20,20 @@ const vectors = new VectorsDB(client);
 
 const code = (err: unknown) => (err as { code?: number }).code;
 
-/** Run `create`, treating "already exists" (409) as success. */
-async function ensure(label: string, create: () => Promise<unknown>) {
+/**
+ * Run `create` unless `exists` finds the resource. "Already exists" (409) also counts as success: on
+ * the Free plan Appwrite reports a plan limit instead of 409 for an existing database, so check first.
+ */
+async function ensure(label: string, create: () => Promise<unknown>, exists?: () => Promise<unknown>) {
+  if (exists) {
+    try {
+      await exists();
+      console.log(`  · ${label} exists`);
+      return;
+    } catch (err) {
+      if (code(err) !== 404) throw new Error(`${label}: ${(err as Error).message}`);
+    }
+  }
   try {
     await create();
     console.log(`  ✓ created ${label}`);
@@ -44,9 +56,15 @@ async function waitFor(label: string, check: () => Promise<string>, done = 'avai
 console.log(`Provisioning Déjà in project ${config.projectId}\n`);
 
 console.log('TablesDB');
-await ensure(`database ${TABLES_DB_ID}`, () => tables.create({ databaseId: TABLES_DB_ID, name: 'Déjà' }));
+await ensure(
+  `database ${TABLES_DB_ID}`,
+  () => tables.create({ databaseId: TABLES_DB_ID, name: 'Déjà' }),
+  () => tables.get({ databaseId: TABLES_DB_ID }),
+);
 for (const def of TABLE_DEFS) {
-  await ensure(`table ${def.id}`, () =>
+  await ensure(
+    `table ${def.id}`,
+    () =>
     tables.createTable({
       databaseId: TABLES_DB_ID,
       tableId: def.id,
@@ -57,10 +75,13 @@ for (const def of TABLE_DEFS) {
       columns: def.columns,
       indexes: def.indexes,
     }),
+    () => tables.getTable({ databaseId: TABLES_DB_ID, tableId: def.id }),
   );
 }
 
-if (config.vectorBackend === 'qdrant') {
+if (config.vectorBackend === 'tables') {
+  console.log('\nVector search: tables backend (TablesDB + Appwrite Embeddings), nothing to provision');
+} else if (config.vectorBackend === 'qdrant') {
   console.log(`\nQdrant (${config.qdrantUrl})`);
   const created = await new QdrantVectorIndex(config.qdrantUrl, config.qdrantApiKey).ensure();
   console.log(`  ${created ? '✓ created' : '· exists'} collection ${QDRANT_COLLECTION} (${EMBEDDING_DIMENSION}d cosine, ownerId index)`);
