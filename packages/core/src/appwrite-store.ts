@@ -270,12 +270,11 @@ export class AppwriteVectorIndex implements VectorIndex {
   }
 
   async put(id: string, vector: number[], metadata: { ownerId: string; project: string; kind: string }) {
-    await this.vectors.createDocument({
+    // Upsert so a reindex can run more than once.
+    await this.vectors.upsertDocuments({
       databaseId: VECTORS_DB_ID,
       collectionId: VECTOR_COLLECTION_ID,
-      documentId: id,
-      data: { embeddings: vector, metadata },
-      permissions: ownerPerms(metadata.ownerId),
+      documents: [{ $id: id, $permissions: ownerPerms(metadata.ownerId), embeddings: vector, metadata }],
     });
   }
 

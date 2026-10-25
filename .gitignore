@@ -8,3 +8,4 @@ dist
 .next-build
 *.tsbuildinfo
 .next-*
+.deploy

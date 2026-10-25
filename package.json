@@ -13,7 +13,9 @@
     "test": "pnpm -r test",
     "mcp:e2e": "tsx scripts/mcp-e2e.ts",
     "check:vectorsdb": "tsx --env-file=.env scripts/check-vectorsdb.ts",
-    "check:judge": "tsx --env-file=.env scripts/check-judge.ts"
+    "check:judge": "tsx --env-file=.env scripts/check-judge.ts",
+    "deploy:site": "tsx --env-file=.env scripts/deploy-site.ts",
+    "reindex": "tsx --env-file=.env scripts/reindex.ts"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
