@@ -102,7 +102,7 @@ export default function Landing() {
             human forgetting curve, and can always tell you why it knows what it knows.
           </p>
           <div className="mt-9 flex flex-wrap justify-center gap-3">
-            <Link href="/brain" className="inline-flex items-center gap-2 bg-amber px-5 py-3 text-sm font-medium text-void transition hover:brightness-110">
+            <Link href="/demo" className="inline-flex items-center gap-2 bg-amber px-5 py-3 text-sm font-medium text-void transition hover:brightness-110">
               See a live brain <ArrowRight size={15} />
             </Link>
             <a href="#install" className="inline-flex items-center gap-2 border border-line-2 px-5 py-3 text-sm text-ink-2 transition hover:border-ink-2 hover:text-ink">
@@ -239,7 +239,7 @@ export default function Landing() {
         <Row>
           <div className="relative flex flex-col items-center overflow-hidden px-6 pb-20 pt-16">
             <p className="select-none font-serif text-[30vw] leading-[0.8] tracking-[-0.04em] text-ink/90 lg:text-[340px]">déjà</p>
-            <Link href="/brain" className="mt-10 inline-flex items-center gap-2 bg-amber px-5 py-3 text-sm font-medium text-void transition hover:brightness-110">
+            <Link href="/demo" className="mt-10 inline-flex items-center gap-2 bg-amber px-5 py-3 text-sm font-medium text-void transition hover:brightness-110">
               See a live brain <ArrowRight size={15} />
             </Link>
             <p className="absolute bottom-5 left-5 text-[11px] text-faint">Built solo for the Appwrite Databases Hackathon · Oct 2026</p>

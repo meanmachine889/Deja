@@ -8,10 +8,11 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Constellation, retentionAt } from '@/components/Constellation';
 import { AskBar, ConflictInbox, Drawer, Feed, RecallResults, StatsPanel, TimeWarp, Toast } from '@/components/panels';
-import { account, api, clearJwt, OFFLINE, subscribeEvents } from '@/lib/browser';
+import { account, api, clearJwt, OFFLINE, setDemoMode, subscribeEvents } from '@/lib/browser';
 import type { BrainData } from '@/lib/types';
 
-export function BrainApp() {
+/** The dashboard. `demo`: the public read-only demo brain (no sign-in, no Realtime, no edits). */
+export function BrainApp({ demo = false }: { demo?: boolean }) {
   const router = useRouter();
   const [data, setData] = useState<BrainData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +78,8 @@ export function BrainApp() {
     let timer: ReturnType<typeof setInterval> | undefined;
     let debounce: ReturnType<typeof setTimeout> | undefined;
     (async () => {
-      if (!OFFLINE) {
+      setDemoMode(demo);
+      if (!OFFLINE && !demo) {
         try {
           await account().get();
         } catch {
@@ -87,6 +89,7 @@ export function BrainApp() {
       }
       await load();
       if (OFFLINE) timer = setInterval(load, 3000);
+      else if (demo) return;
       else
         stop = await subscribeEvents((row) => {
           if (typeof row.memoryId === 'string') flares.current.set(row.memoryId, performance.now());
@@ -99,7 +102,7 @@ export function BrainApp() {
       clearInterval(timer);
       clearTimeout(debounce);
     };
-  }, [load, router]);
+  }, [load, router, demo]);
 
   const projects = useMemo(() => [...new Set(data?.memories.map((m) => m.project) ?? [])].sort(), [data]);
   const inProject = useCallback((p: string) => project === 'all' || p === project || p === 'global', [project]);
@@ -148,6 +151,7 @@ export function BrainApp() {
         </Link>
         <div className="pointer-events-auto flex w-full max-w-xl flex-col items-center gap-2">
           <AskBar
+            readOnly={demo}
             project={project}
             onResults={(h) => {
               setHits(h);
@@ -179,11 +183,16 @@ export function BrainApp() {
           </select>
           <button
             onClick={() => setConflictsOpen(true)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs transition ${conflicts.length ? 'bg-conflict/15 text-conflict' : 'text-mute hover:text-ink'}`}
+            className={`flex items-center gap-1.5 whitespace-nowrap px-3 py-1.5 text-xs transition ${conflicts.length ? 'bg-conflict/15 text-conflict' : 'text-mute hover:text-ink'}`}
           >
             <Zap size={12} /> {conflicts.length} conflict{conflicts.length === 1 ? '' : 's'}
           </button>
-          {!OFFLINE && (
+          {demo && (
+            <Link href="/login" className="whitespace-nowrap bg-ink px-3 py-1.5 text-xs font-medium text-void hover:bg-white">
+              Connect your agent
+            </Link>
+          )}
+          {!OFFLINE && !demo && (
             <button
               onClick={async () => {
                 await account().deleteSession({ sessionId: 'current' }).catch(() => {});
@@ -216,6 +225,7 @@ export function BrainApp() {
           <div className="flex min-h-0 flex-col justify-start">
             {selected && wide ? (
               <Drawer
+                readOnly={demo}
                 id={selected}
                 version={version}
                 timeWarp={data.timeWarp}
@@ -224,7 +234,7 @@ export function BrainApp() {
                 onChanged={load}
               />
             ) : (
-              <Feed events={events} fresh={fresh} onPick={setSelected} />
+              <Feed events={events} fresh={fresh} live={!demo} onPick={setSelected} />
             )}
           </div>
         </div>
@@ -233,7 +243,7 @@ export function BrainApp() {
       {/* Mobile drawer */}
       {data && selected && !wide && (
         <div className="absolute inset-x-4 bottom-20 top-40 z-30 flex">
-          <Drawer id={selected} version={version} timeWarp={data.timeWarp} onClose={() => setSelected(null)} onPick={setSelected} onChanged={load} />
+          <Drawer readOnly={demo} id={selected} version={version} timeWarp={data.timeWarp} onClose={() => setSelected(null)} onPick={setSelected} onChanged={load} />
         </div>
       )}
 
@@ -247,13 +257,19 @@ export function BrainApp() {
       {error && (
         <div className="absolute inset-0 flex items-center justify-center p-6 text-center text-sm text-conflict">{error}</div>
       )}
-      {data && OFFLINE && !clean && (
+      {data && demo && !clean && (
+        <div className="pointer-events-none absolute bottom-16 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap font-mono text-[10px] uppercase tracking-[0.14em] text-faint md:block">
+          demo brain · read-only · an agent's two months on a storefront
+        </div>
+      )}
+      {data && OFFLINE && !demo && !clean && (
         <div className="pointer-events-none absolute bottom-16 left-1/2 z-10 hidden -translate-x-1/2 whitespace-nowrap font-mono md:block text-[10px] uppercase tracking-[0.14em] text-faint">
           offline demo brain · connect Appwrite for realtime
         </div>
       )}
       {conflictsOpen && data && (
         <ConflictInbox
+          readOnly={demo}
           data={{ ...data, conflicts }}
           onClose={() => setConflictsOpen(false)}
           onResolved={() => {

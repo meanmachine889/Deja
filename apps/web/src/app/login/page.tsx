@@ -75,6 +75,9 @@ export default function LoginPage() {
             <button type="button" onClick={() => setMode(mode === 'signin' ? 'signup' : 'signin')} className="text-xs text-mute hover:text-ink">
               {mode === 'signin' ? 'New here? Create an account' : 'Have an account? Sign in'}
             </button>
+            <a href="/demo" className="text-center text-xs text-faint hover:text-ink">
+              Just looking? Explore the demo brain →
+            </a>
           </form>
         )}
       </div>

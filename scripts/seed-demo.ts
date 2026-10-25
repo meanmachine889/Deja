@@ -2,6 +2,7 @@
 // `pnpm seed:demo` · `pnpm seed:demo --reset` wipes the demo first: every row seeded with a `demo-`
 // session id, plus everything in the `acme-shop` project (it only exists for the demo, so recorded
 // runs start clean). Memories in other projects are never touched.
+// `--owner deja-demo` seeds the public read-only demo brain instead of DEJA_OWNER_ID's.
 import { Query, TablesDB } from 'node-appwrite';
 import {
   AppwriteEmbedder,
@@ -16,8 +17,9 @@ import {
 } from '@deja/core';
 
 const config = loadConfig();
-if (!config.ownerId) throw new Error('Set DEJA_OWNER_ID in .env first (sign up on the dashboard /login page).');
-const ownerId = config.ownerId;
+const ownerFlag = process.argv.indexOf('--owner');
+const ownerId = ownerFlag > 0 ? process.argv[ownerFlag + 1] : config.ownerId;
+if (!ownerId) throw new Error('Set DEJA_OWNER_ID in .env first (sign up on the dashboard /login page), or pass --owner <id>.');
 const client = serverClient(config);
 const tables = new TablesDB(client);
 const vectors = createVectorIndex(config);

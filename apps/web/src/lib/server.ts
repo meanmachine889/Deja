@@ -44,6 +44,26 @@ export class HttpError extends Error {
 
 const verified = new Map<string, { ownerId: string; until: number }>();
 
+/** Owner of the public read-only demo brain (`pnpm seed:demo --owner deja-demo`). No account exists for it. */
+export const DEMO_OWNER = process.env.DEJA_DEMO_OWNER_ID || 'deja-demo';
+
+/** Context for the public demo: no sign-in, a fixed owner. Only read-only routes use it. */
+export function demoCtx(project?: string | null): Ctx {
+  return { ownerId: OFFLINE ? OFFLINE_OWNER : DEMO_OWNER, sessionId: 'demo-viewer', agent: 'demo-viewer', project: project || 'global' };
+}
+
+/** Everything the dashboard draws, in one request. */
+export async function brainPayload(ctx: Ctx) {
+  const deja = await getDeja();
+  const [graph, conflicts, events, sessions] = await Promise.all([
+    deja.graph(ctx),
+    deja.conflicts(ctx),
+    deja.timeline(ctx, { limit: 60 }),
+    deja.store.listSessions(ctx.ownerId, 20),
+  ]);
+  return { ...graph, conflicts, events, sessions, ownerId: ctx.ownerId, timeWarp: deja.timeWarp, now: new Date().toISOString() };
+}
+
 /** Resolve the acting user from the `X-Deja-JWT` header (an Appwrite account JWT). */
 export async function ctxFrom(req: Request, project?: string | null): Promise<Ctx> {
   const base = { sessionId: 'dashboard', agent: 'dashboard', project: project || 'global' };

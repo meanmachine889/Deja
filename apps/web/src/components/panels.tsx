@@ -31,6 +31,7 @@ export function Pill({ children, className = '' }: { children: React.ReactNode; 
 // ------------------------------------------------------------------ top bar
 
 export function AskBar(props: {
+  readOnly?: boolean;
   project: string;
   onResults: (hits: RecallHit[]) => void;
   onTaught: (res: RememberResult) => void;
@@ -62,7 +63,7 @@ export function AskBar(props: {
   return (
     <form onSubmit={submit} className="glass flex w-full max-w-xl items-center gap-1 p-1 pl-1.5">
       <div className="flex shrink-0 bg-white/[0.04] p-0.5 text-xs">
-        {(['ask', 'teach'] as const).map((m) => (
+        {(props.readOnly ? (['ask'] as const) : (['ask', 'teach'] as const)).map((m) => (
           <button
             key={m}
             type="button"
@@ -207,15 +208,27 @@ function groupEvents(events: MemoryEvent[]) {
   return groups;
 }
 
-export function Feed({ events, fresh, onPick }: { events: MemoryEvent[]; fresh: Set<string>; onPick: (id: string) => void }) {
+export function Feed({
+  events,
+  fresh,
+  live = true,
+  onPick,
+}: {
+  events: MemoryEvent[];
+  fresh: Set<string>;
+  live?: boolean;
+  onPick: (id: string) => void;
+}) {
   const groups = useMemo(() => groupEvents(events), [events]);
   return (
     <aside className="glass pointer-events-auto flex max-h-full w-72 flex-col">
       <div className="flex items-center justify-between px-5 pb-2 pt-4">
-        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">Live</p>
-        <span className="flex items-center gap-1.5 text-[11px] text-mute">
-          <span className="animate-pulse-dot h-1.5 w-1.5 bg-amber" /> realtime
-        </span>
+        <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-faint">{live ? 'Live' : 'Activity'}</p>
+        {live && (
+          <span className="flex items-center gap-1.5 text-[11px] text-mute">
+            <span className="animate-pulse-dot h-1.5 w-1.5 rounded-full bg-amber" /> realtime
+          </span>
+        )}
       </div>
       <ol className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {groups.map(({ head: e, count, ids }) => {
@@ -247,6 +260,7 @@ export function Feed({ events, fresh, onPick }: { events: MemoryEvent[]; fresh: 
 // ------------------------------------------------------------------ drawer
 
 export function Drawer(props: {
+  readOnly?: boolean;
   id: string;
   version: number;
   timeWarp: number;
@@ -343,7 +357,7 @@ export function Drawer(props: {
             </Section>
           )}
 
-          {m.status === 'active' && (
+          {m.status === 'active' && !props.readOnly && (
             <button
               onClick={async () => {
                 await api('/api/forget', { body: { id: m.id } });
@@ -442,7 +456,17 @@ function RetentionCurve({ memory, timeWarp }: { memory: Memory; timeWarp: number
 
 // ------------------------------------------------------------------ conflicts
 
-export function ConflictInbox({ data, onClose, onResolved }: { data: BrainData; onClose: () => void; onResolved: () => void }) {
+export function ConflictInbox({
+  data,
+  readOnly,
+  onClose,
+  onResolved,
+}: {
+  data: BrainData;
+  readOnly?: boolean;
+  onClose: () => void;
+  onResolved: () => void;
+}) {
   const [busy, setBusy] = useState<string | null>(null);
   const resolve = async (linkId: string, keepId: string) => {
     setBusy(linkId);
@@ -459,7 +483,10 @@ export function ConflictInbox({ data, onClose, onResolved }: { data: BrainData; 
         <div className="flex items-start justify-between">
           <div>
             <h2 className="font-serif text-4xl leading-none">Your agent isn’t sure.</h2>
-            <p className="mt-2 text-sm text-mute">These memories disagree and nothing says which is newer. Pick the truth; the other is superseded.</p>
+            <p className="mt-2 text-sm text-mute">
+              These memories disagree and nothing says which is newer. Pick the truth; the other is superseded.
+              {readOnly && ' (Read-only in the demo: in a real brain, you or your agent resolve this.)'}
+            </p>
           </div>
           <button onClick={onClose} className=" p-1.5 text-mute hover:bg-white/5 hover:text-ink" aria-label="Close">
             <X size={18} />
@@ -475,7 +502,7 @@ export function ConflictInbox({ data, onClose, onResolved }: { data: BrainData; 
             <div key={link.id}>
               <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr] sm:items-stretch">
                 {[a, b].map((m, i) => (
-                  <ConflictCard key={m.id} m={m} side={i} busy={busy === link.id} onKeep={() => resolve(link.id, m.id)} />
+                  <ConflictCard key={m.id} m={m} side={i} busy={busy === link.id} onKeep={readOnly ? undefined : () => resolve(link.id, m.id)} />
                 )).flatMap((el, i) => (i === 0 ? [el, <div key="vs" className="hidden items-center font-serif text-2xl italic text-conflict sm:flex">vs</div>] : [el]))}
               </div>
               {link.reason && <p className="mt-2 text-xs text-mute">Why flagged: {link.reason}</p>}
@@ -487,7 +514,7 @@ export function ConflictInbox({ data, onClose, onResolved }: { data: BrainData; 
   );
 }
 
-function ConflictCard({ m, busy, onKeep }: { m: Memory; side: number; busy: boolean; onKeep: () => void }) {
+function ConflictCard({ m, busy, onKeep }: { m: Memory; side: number; busy: boolean; onKeep?: () => void }) {
   return (
     <div className="flex flex-col border border-line bg-white/[0.02] p-4">
       <span className="flex items-center gap-2 text-[11px] text-mute">
@@ -495,9 +522,10 @@ function ConflictCard({ m, busy, onKeep }: { m: Memory; side: number; busy: bool
       </span>
       <p className="mt-2 flex-1 font-serif text-xl leading-snug">{m.content}</p>
       <button
-        disabled={busy}
+        disabled={busy || !onKeep}
         onClick={onKeep}
-        className="mt-4 inline-flex w-fit items-center gap-1.5 bg-ink px-3.5 py-1.5 text-xs font-medium text-void transition hover:bg-white disabled:opacity-50"
+        title={onKeep ? undefined : 'Read-only demo: an agent or the owner resolves this'}
+        className="mt-4 inline-flex w-fit items-center gap-1.5 bg-ink px-3.5 py-1.5 text-xs font-medium text-void transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-40"
       >
         <Check size={13} /> Keep this
       </button>

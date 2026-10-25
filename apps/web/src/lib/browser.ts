@@ -4,6 +4,13 @@ import { Account, Channel, Client, Realtime } from 'appwrite';
 
 export const OFFLINE = process.env.NEXT_PUBLIC_DEJA_OFFLINE === '1';
 
+// Public demo: no sign-in, read-only `/api/demo/*` routes, no Realtime (demo rows aren't readable
+// by visitors' sessions). Set once by the /demo page before its first request.
+let demo = false;
+export function setDemoMode(on: boolean) {
+  demo = on;
+}
+
 let client: Client | null = null;
 export function appwrite(): Client {
   client ??= new Client()
@@ -29,7 +36,8 @@ export function clearJwt() {
 
 export async function api<T>(path: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
   const headers: Record<string, string> = { 'content-type': 'application/json' };
-  if (!OFFLINE) headers['x-deja-jwt'] = await getJwt();
+  if (demo) path = path.replace(/^\/api\//, '/api/demo/');
+  else if (!OFFLINE) headers['x-deja-jwt'] = await getJwt();
   const res = await fetch(path, {
     method: init.method ?? (init.body ? 'POST' : 'GET'),
     headers,
@@ -43,7 +51,7 @@ export async function api<T>(path: string, init: { method?: string; body?: unkno
 
 /** Subscribe to every row written to the events table the signed-in user can read. */
 export async function subscribeEvents(onEvent: (row: Record<string, unknown>) => void): Promise<() => void> {
-  if (OFFLINE) return () => {};
+  if (OFFLINE || demo) return () => {};
   const realtime = new Realtime(appwrite());
   const sub = await realtime.subscribe(Channel.tablesdb('deja').table('events').row(), (e) => {
     if (e.events.some((name) => name.endsWith('.create'))) onEvent(e.payload as Record<string, unknown>);

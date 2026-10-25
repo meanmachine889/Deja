@@ -8,7 +8,7 @@ noise on a forgetting curve, and can always **explain** where a memory came from
 
 Built on **Appwrite TablesDB** for the [Appwrite Databases Hackathon](https://hackathon.appwrite.io) (Oct 2026).
 
-**Live:** https://deja.appwrite.network (hosted on Appwrite Sites)
+**Live:** https://deja.appwrite.network (hosted on Appwrite Sites) · **[Explore the demo brain](https://deja.appwrite.network/demo)** (no sign-up, read-only)
 
 ![The Déjà dashboard: memories as a star chart, with stats, kinds and a live event feed](docs/brain.png)
 
@@ -139,6 +139,7 @@ pnpm web                      # dashboard on http://localhost:3100
    ```
    Keep the `-s`: without it pnpm prints a banner to stdout and breaks the MCP protocol.
 4. Optional: `pnpm seed:demo` loads a two-month demo story into the `acme-shop` project.
+   `pnpm seed:demo --owner deja-demo` seeds the public read-only brain served at `/demo`.
 
 No Appwrite project yet? `pnpm web` without an API key serves a seeded **offline demo brain**, and
 `DEJA_OFFLINE=1 pnpm mcp` runs the MCP server in memory.
