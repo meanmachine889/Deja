@@ -81,7 +81,7 @@ up). Then type `which database do we use?` in Ask → the MySQL star lights up.
 
 ### 8 · Architecture and end card (2:25–2:40)
 The README's architecture diagram on GitHub (it renders the mermaid), or the landing page's
-architecture section. End card: **Déjà**, `deja.appwrite.network/demo`, `github.com/meanmachine889/Deja`.
+**Where memory lives** section. End card: **Déjà**, `deja.appwrite.network/demo`, `github.com/meanmachine889/Deja`.
 
 > VO: "Under the hood, Appwrite TablesDB is the brain: memories, a knowledge graph, an event log, and
 > row-level permissions for each user. Appwrite Embeddings power search, Realtime drives the live view,
